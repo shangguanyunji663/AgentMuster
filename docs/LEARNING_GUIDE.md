@@ -15,7 +15,7 @@
 | 三、环境与上手 | 第 1 章 | 环境准备(.conda) | 所有人,**必读** |
 | | 第 2 章 | 快速上手:20 分钟跑通全流程 | 所有人 |
 | 四、总览 | 第 3 章 | 学习路线总览(原第〇章) | 所有人 |
-| 五、十站源码走读 | 第 4 章 | 第 1 站 地基:config / state / util / artifacts | L1+ |
+| 五、十站源码走读(含 2 个插站) | 第 4 章 | 第 1 站 地基:config / state / util / artifacts | L1+ |
 | | 第 5 章 | 第 2 站 模型后端:models/ | L1+ |
 | | 第 6 章 | 第 3 站 工具框架:tools/ | L1+ |
 | | 第 7 章 | 第 4 站 安全边界:safety/ | L1+ |
@@ -23,10 +23,12 @@
 | | 第 9 章 | 第 6 站 结构化记忆:memory/ | L2 |
 | | 第 10 章 | 第 7 站 断点恢复:checkpoint/ | L2 |
 | | 第 11 章 | 第 8 站 主循环:agent/harness | L2,**核心** |
-| | 第 12 章 | 第 9 站 评测闭环:eval/ | L2 |
-| | 第 13 章 | 第 10 站 收尾:cli / api / examples / tests | L1+ |
-| 六、总结 | 第 14 章 | 设计模式回顾与核心数据流 | L2 |
-| | 第 15 章 | 读完之后:实操进阶路线 | 所有人 |
+| | 第 12 章 | 第 8b 站 插站·编排层:agent/orchestrator | L2 |
+| | 第 13 章 | 第 8c 站 插站·可观测性:observability | L2 |
+| | 第 14 章 | 第 9 站 评测闭环:eval/ | L2 |
+| | 第 15 章 | 第 10 站 收尾:cli / api / examples / tests | L1+ |
+| 六、总结 | 第 16 章 | 设计模式回顾与核心数据流 | L2 |
+| | 第 17 章 | 读完之后:实操进阶路线 | 所有人 |
 | 七、附录(检索区) | A~G | 术语表 / 配置速查 / CLI 速查 / 测试索引 / FAQ / 易错点大全 / 自测清单 | 所有人 |
 
 > **检索提示**:遇到不认识的词,先查[附录 A 术语表](#附录-a-完整术语表按主题分组);配置项含义查[附录 B](#附录-b-配置项速查表);命令用法查[附录 C](#附录-c-cli--api-命令速查);"为什么跑不起来/结果不对"查[附录 E FAQ](#附录-e-faq常见问题解答)与[附录 F 易错点大全](#附录-f-易错点与调试技巧大全)。
@@ -53,8 +55,8 @@
 |------|--------|------|------------------|----------|------------|
 | **P0 跑起来** | 完全零基础,只想看到它能运行 | 跑通测试/Demo/评测,建立直观感受 | 第 0.1~0.3 节 → 第 1 章 → 第 2 章 | ~1 小时 | 浏览器里看到监控页出现一次任务运行 |
 | **P1 会使用** | 会 Python,想理解系统怎么工作 | 能解释每个模块"做什么、为什么" | P0 + 第 3 章 → 第 1/5/8 站精读(第 4/5/8、11 章)→ 附录 B/C | ~半天 | 能向别人画出主循环流程图 |
-| **P2 懂设计** | 想吃透设计思路 | 十站全部走读,完成每站练习 | P1 + 十站全序(第 4~13 章)→ 第 14 章 | 2~3 天 | 完成全部"进阶练习" |
-| **P3 能贡献** | 要改源码/做扩展/做研究 | 能安全地修改并通过全部测试 | P2 + 附录 D 测试索引 → 每站测试文件对照 → 第 15 章进阶任务 | ~1 周 | 独立完成第 15 章的任一扩展任务且 272 项测试全绿 |
+| **P2 懂设计** | 想吃透设计思路 | 十站全部走读,完成每站练习 | P1 + 十站全序 + 两个插站(第 4~15 章)→ 第 16 章 | 2~3 天 | 完成全部"进阶练习" |
+| **P3 能贡献** | 要改源码/做扩展/做研究 | 能安全地修改并通过全部测试 | P2 + 附录 D 测试索引 → 每站测试文件对照 → 第 17 章进阶任务 | ~1 周 | 独立完成第 17 章的任一扩展任务且 272 项测试全绿 |
 
 > **P0 读者注意**:你不需要读完整个文档。第 0 章只读 0.1~0.3 节即可上手;其余章节可以在你产生"这是怎么做到的?"疑问时再回来按站查阅——本文档同时是一份**按模块组织的参考手册**。
 
@@ -268,7 +270,7 @@ Giant file: 4669 lines, 143599 chars, 35900 tokens
 cat .mycoder/eval/report.md        # Windows 记事本/VS Code 打开亦可
 ```
 
-预期:report.md 依次给出 Layer 1 回归 / Layer 2 上下文(压缩率 ~80%)/ Layer 3 记忆(follow-up 重读 2→0)/ Layer 4 恢复(10 场景漂移识别 100%)/ Layer 5 检索(recall@3:substring 28% vs hybrid 63%)五段结果。报告怎么读,见第 12 章。
+预期:report.md 依次给出 Layer 1 回归 / Layer 2 上下文(压缩率 ~80%)/ Layer 3 记忆(follow-up 重读 2→0)/ Layer 4 恢复(10 场景漂移识别 100%)/ Layer 5 检索(recall@3:substring 28% vs hybrid 63%)五段结果。报告怎么读,见第 14 章。
 
 ### 第 5 步:启动 API + 浏览器监控页(~1 分钟)
 
@@ -312,7 +314,7 @@ curl http://127.0.0.1:8910/health        # {"service":"mycoder","version":"0.1"}
 - **想理解为什么这样设计**:精读本章 + [ARCHITECTURE.md](ARCHITECTURE.md) 的「核心设计原则」,再进入第 8 站主循环;
 - **想逐行吃透源码甚至做贡献**:按下面 10 站顺序完整走读,每站读完跑对应单测(`tests/test_<模块>.py`)验证理解。
 
-### 3.2 十站源码走读路线
+### 3.2 十站源码走读路线(含 8b/8c 两个插站)
 
 ```
 第 1 站  地基        config / state / util / artifacts    — 先把"骨架数据结构"立起来
@@ -323,11 +325,13 @@ curl http://127.0.0.1:8910/health        # {"service":"mycoder","version":"0.1"}
 第 6 站  结构化记忆  memory/store + retriever             — 让"经验"可复用
 第 7 站  断点恢复    checkpoint/store + drift             — 让"中断"可续跑
 第 8 站  主循环      agent/harness                         — 把一切编排起来
+第 8b 站 插站·编排层 agent/orchestrator                    — 站在主循环之上做多任务并行
+第 8c 站 插站·可观测 observability/tracing                 — 把主循环事件重建成链路追踪
 第 9 站  评测闭环    eval/benchmark + experiment + runner  — 用数据证明系统有效
 第 10 站 收尾        cli / api / examples / tests          — 对外接口与质量保障
 ```
 
-**为什么是这个顺序?** 这是一条**依赖驱动**的阅读顺序:每一站只依赖它之前讲过的东西。先立数据结构(没有数据就没有逻辑),再接大脑(模型)和手脚(工具),随后给手脚加护栏(安全),然后解决"大脑记忆有限"(上下文)和"项目会遗忘"(记忆)两个问题,补上"中断可续"(断点),最后把一切编排进主循环,并用评测证明整个系统有效。**如果你只有时间精读两站,选第 5 站(上下文治理)和第 8 站(主循环)**——前者是本项目最有原创性的算法,后者是所有模块的交汇点。
+**为什么是这个顺序?** 这是一条**依赖驱动**的阅读顺序:每一站只依赖它之前讲过的东西。先立数据结构(没有数据就没有逻辑),再接大脑(模型)和手脚(工具),随后给手脚加护栏(安全),然后解决"大脑记忆有限"(上下文)和"项目会遗忘"(记忆)两个问题,补上"中断可续"(断点),最后把一切编排进主循环,并用评测证明整个系统有效。**两个插站都寄生在第 8 站的产出之上**:编排层复用整台 harness 做并行子任务(第 8 站读不懂它讲什么),可观测性消费主循环发出的语义事件(第 8 站读不懂事件从哪来)——所以必须紧跟其后、评测之前。**如果你只有时间精读两站,选第 5 站(上下文治理)和第 8 站(主循环)**——前者是本项目最有原创性的算法,后者是所有模块的交汇点。
 
 ### 3.3 模块关系一览(谁依赖谁)
 
@@ -594,6 +598,8 @@ class Metrics:
 - ☑ 我能说出 Step 里"裁剪前/后 token"两个字段分别叫什么、给谁用;
 - ☑ 我能解释为什么 trajectory 用追加写而 checkpoint 用原子覆盖写。
 
+**对照测试**:本站无独立测试文件——config/util 由全部测试隐式覆盖;三类工件齐全性由 `tests/test_harness.py::test_produces_three_artifacts` 直接断言。
+
 ---
 
 ## 第 5 章 · 第 2 站 模型后端:models/
@@ -714,6 +720,48 @@ class LocalOpenAIBackend(ModelBackend):
 - 用标准库 urllib 而非 requests:**零额外依赖**,核心运行时只需 PyYAML
 - 内置重试与指数退避(max_retries/backoff_base/backoff_cap,见附录 B)包装网络抖动;`ConnectionError` 包装成可读提示
 
+**生产级增强走读:重试 / 退避 / 流式 / usage**(真模型可靠性的核心,对照 `tests/test_backend.py` 9 项用例):
+
+**① 重试矩阵**:
+
+```python
+_RETRYABLE_STATUS = {408, 409, 425, 429, 500, 502, 503, 504}
+
+def _post_with_retries(self, payload) -> dict:
+    for attempt in range(self.max_retries + 1):
+        try:
+            return self._do_post(url, data)
+        except urllib.error.HTTPError as e:
+            if e.code not in _RETRYABLE_STATUS:
+                self._raise_http_error(url, e)      # 4xx 语义错误 → 不重试,直接抛
+            wait = min(self.backoff_cap, self.backoff_base * (2 ** attempt))  # 指数退避
+            if retry_after := e.headers.get("Retry-After"):
+                wait = max(wait, float(retry_after))  # 服务端要求优先
+            time.sleep(wait)
+        except urllib.error.URLError as e:          # 连接拒绝/超时/重置 → 可重试
+            ...
+    raise ConnectionError(f"多次重试后仍无法连接本地模型服务 {url}。...")
+```
+- **【为什么】** 408/429/5xx 是"再试一次可能就好"的暂时性错误,401/404 这类语义错误重试只是浪费;退避公式 `min(cap, base·2^attempt)` 从 0.5s 翻倍到 8s 封顶,避免压垮本就吃紧的本地服务;服务端返回 `Retry-After` 时取两者较大值——**服务端对自己的拥塞最清楚**。
+
+**② 流式输出**(`complete_stream`,stream=True 时 `complete()` 内部收集片段后返回汇总):
+
+```python
+for event in self._post_sse(payload):
+    delta = choices[0].get("delta") or {}
+    if delta.get("content"):
+        acc_content += delta["content"]              # 文本累积
+    for tc in delta.get("tool_calls") or []:
+        slot = acc_calls.setdefault(tc.get("index", 0), {"id": "", "name": "", "arguments": ""})
+        slot["arguments"] += fn.get("arguments", "")  # 参数片段按 index 归槽累积
+    yield ModelResponse(content=acc_content, ...)     # 每次 yield 都是"到目前为止"的全文
+# 最后一次 yield:补 finish_reason;服务端未回 usage 时 completion 退化启发式估算
+```
+- 每次 yield 都带**累积**全文而非增量——上层"打字机"渲染无需自己拼。
+- 注意一个不对称:**流式不重试**(`_post_sse` 无退避逻辑)——**【为什么】** SSE 已经开始向调用方 yield,中途失败无法安全重放(重放会造成重复输出)。
+
+**③ usage 解析**(`_parse`):`arguments` 保持 JSON 字符串(万一服务端返回 dict 则 `json.dumps` 转回,守住第 2/8 站的协议约定);服务端未回 `usage.completion_tokens` 时退化到 `tokenize_len(content)` 启发式,prompt 取不到就如实为 0(上层计量见 11.8)。
+
 **▶ 动手示例 5-1:用 MockBackend 手写一个两步 Agent 循环**(已验证——这就是 Harness 主循环的"裸版",第 8 站会看到完整版)
 
 ```python
@@ -772,6 +820,8 @@ print("裁剪信息:", ctx.last_prune)
 - ☑ 我能解释 `state()/load_state()` 为什么存在于基类而不是 Mock 的私事;
 - ☑ 我能手写一个两轮 Mock 脚本并说清每轮消息流的形态;
 - ☑ 我知道为什么 `arguments` 全链路保持字符串。
+
+**对照测试**:`tests/test_models.py`(15 项:脚本推进/state 恢复)+ `tests/test_backend.py`(9 项:重试/退避/流式/usage,见 5.3 生产级增强走读)。
 
 ---
 
@@ -980,6 +1030,8 @@ grep 输出: a.py:1:def add(a, b):
 - ☑ 我能逐层解释 resolve() 的四层防护,并说出 startswith 的反例;
 - ☑ 我能说清 ToolContext 依赖注入给测试带来什么好处。
 
+**对照测试**:`tests/test_sandbox.py`(15 项:路径逃逸拦截)+ `tests/test_tools.py`(21 项:各工具 execute 与错误分支)。
+
 ---
 
 ## 第 7 章 · 第 4 站 安全边界:safety/
@@ -1137,6 +1189,8 @@ print("脱敏:", red.redact("key: sk-abcdefgh12345678, password=hunter2"))
 - ☑ 我能解释读去重与写去重语义差异的原因(幂等性);
 - ☑ 我能说出脱敏器作用的三处位置。
 
+**对照测试**:`tests/test_safety.py`(70 项:参数化展开的校验/隔离/白名单/去重/HITL/脱敏——全项目最大的测试文件,安全边界的每一行都有用例)。
+
 ---
 
 ## 第 8 章 · 第 5 站 上下文治理:context/
@@ -1222,6 +1276,8 @@ def assemble(self) -> list[Message]:
     self.last_prune = PruneInfo(before, after, pruned, strategies)
 ```
 
+> 阅读提示:摘录里的 `memory_block` 是结构化记忆注入的 system 消息;本站先把它当作"可能存在的附加 system 段"即可,**注入机制与内容见第 9 章**(followup_context)。
+
 **【为什么】三层递进(先折叠、再丢弃、最后截断)而不是一步到位?** 三种手段在"保信息"与"压 token"上的权衡不同:折叠保留要点(信息损失小、压缩中等)→ 只保留最近一轮(信息损失大、压缩强)→ 截断超长内容(针对"单条过大"而非"历史太多"的病根)。**按代价从小到大依次启用**,能用温和手段解决就不动用激进手段;同时 `strategies` 列表记录实际用了哪几档,评测时能分析行为。
 
 **`_enforce_budget` 算法**:
@@ -1301,6 +1357,8 @@ print("策略:", ctx.last_prune.strategies)
 - ☑ 我能按序说出三层裁剪策略及其触发条件;
 - ☑ 我能解释"全量重算 + 深拷贝"如何共同保证确定性;
 - ☑ 我知道 PruneInfo 的四个字段各是什么、ratio 怎么算。
+
+**对照测试**:`tests/test_context.py`(19 项:CJK/ASCII 估算、fold/fold_to_1/enforce_budget、深拷贝安全、deterministic replay、摘要器)。
 
 ---
 
@@ -1387,7 +1445,44 @@ class VectorIndex: ...               # 余弦相似度检索
 class BM25: ...                      # 经典词频检索
 class HybridRetriever: ...           # 向量 cosine + BM25 加权融合(alpha 可调)
 ```
-- **【为什么】默认用 HashingEmbedder?** 零依赖、零下载、结果可复现;字符 n-gram 哈希对"同义改写"有弱语义效果(共享字符片段),对精确匹配天然友好。Layer 5 实测它已能把同义改写查询的 recall@3 从 28%(纯 substring)拉到 63%;要更进一步再升级 FastEmbed(见第 12 章 Layer 7)。
+- **【为什么】默认用 HashingEmbedder?** 零依赖、零下载、结果可复现;字符 n-gram 哈希对"同义改写"有弱语义效果(共享字符片段),对精确匹配天然友好。Layer 5 实测它已能把同义改写查询的 recall@3 从 28%(纯 substring)拉到 63%;要更进一步再升级 FastEmbed(见第 14 章 Layer 7)。
+
+**实现细节走读(三件套各自的算法内核):**
+
+**① HashingEmbedder:字符 n-gram → 定长向量**
+
+```python
+def embed(self, text) -> list[float]:
+    vec = [0.0] * self._dim
+    norm_text = (text or "").lower().strip()
+    grams = list(norm_text) + self._grams(norm_text, self._ngram)  # unigram + bigram
+    for g in grams:
+        idx = int.from_bytes(hashlib.md5(g.encode("utf-8")).digest()[:4], "big") % self._dim
+        vec[idx] += 1.0                                   # 计数落桶
+    norm = math.sqrt(sum(v * v for v in vec))
+    return [v / norm for v in vec]                        # L2 归一化
+```
+- **【为什么】用 MD5 而不是内置 `hash()`?** Python 对 str 的 `hash()` 默认开启随机化盐,进程每次启动结果不同——同一文本两次 embed 向量都会变,确定性破产;MD5 稳定且跨进程一致。
+- 归一化后向量只表达"字符片段的分布形状",两段共享大量 n-gram 的文本余弦相似度高——这就是"同义改写可部分召回"的机制(共享汉字)。
+
+**② BM25:经典词频打分**
+
+```python
+idf = math.log(1 + (n - df + 0.5) / (df + 0.5))           # 词的稀缺度
+score += idf * (tf * (self.k1 + 1)) / \
+         (tf + self.k1 * (1 - self.b + self.b * dl / avgdl))
+```
+- `k1=1.5` 控制词频饱和(出现 10 次不该比 2 次强 5 倍),`b=0.75` 做长文档归一(防止长文占便宜);IDF 惰性计算(首次 search 时构建)。
+
+**③ HybridRetriever:两路融合**
+
+```python
+d_n = self._normalize(dense)      # 各自除以最大分,归一到 (0,1]
+s_n = self._normalize(sparse)
+hybrid = {i: self.alpha * d_n.get(i, 0.0) + (1 - self.alpha) * s_n.get(i, 0.0)
+          for i in set(d_n) | set(s_n)}
+```
+- **【为什么】先各自归一化再融合?** cosine 天然落在 [0,1],而 BM25 分数无界(可能 0.3 也可能 30)——直接加权会被 BM25 主导,`alpha` 形同虚设;归一化让 α 真正表达两路的话语权。
 
 **▶ 动手示例 9-1:沉淀 → 检索 → follow-up 注入**(已验证)
 
@@ -1421,6 +1516,32 @@ follow-up 注入块:
 摘要新鲜(哈希一致): True
 ```
 
+**▶ 动手示例 9-2:三路检索手算**(已验证——2 个文档、1 个查询,每个数字都能手工复核)
+
+```python
+from mycoder.memory.vectors import HashingEmbedder, BM25, VectorIndex, HybridRetriever, tokenize
+
+emb = HashingEmbedder(dim=64, ngram=2)     # 小维度便于演示
+docs = {"d1": "用户登录需要校验token", "d2": "矩阵乘法线性代数运算"}
+idx = VectorIndex(emb); bm = BM25()
+for i, t in docs.items():
+    idx.add(i, t); bm.add(i, tokenize(t))
+hy = HybridRetriever(idx, bm, emb, alpha=0.5)
+
+print("向量:", [(i, round(s, 3)) for i, s in idx.search(emb.embed("登录凭证"), top_k=2)])
+print("BM25:", [(i, round(s, 3)) for i, s in bm.search(tokenize("登录凭证"), top_k=2)])
+print("混合:", [(i, round(s, 3)) for i, s in hy.rank("登录凭证", top_k=2)])
+```
+
+真实输出:
+```
+向量: [('d1', 0.464), ('d2', 0.139)]
+BM25: [('d1', 1.42), ('d2', 0.0)]
+混合: [('d1', 1.0), ('d2', 0.15)]
+```
+
+手算复核混合分:归一化后 dense = {d1: 0.464/0.464=1.0, d2: 0.139/0.464≈0.3},sparse = {d1: 1.42/1.42=1.0, d2: 0};按 α=0.5 融合 → d1 = 0.5×1.0+0.5×1.0 = **1.0**,d2 = 0.5×0.3+0.5×0 = **0.15**——与输出逐位吻合。注意 d2 的向量分(0.139)全靠字符 n-gram 的"弱语义"蹭到的;换成 substring 模式它根本不会出现。
+
 **✍ 练习**
 - 基础:示例 9-1 之后修改 `a.py` 内容再次 `remember_file`,确认返回 `True`(真更新)且摘要变化;不改内容重跑,确认返回 `False`。
 - 进阶:配置 `memory.retrieval.mode: hybrid` 后构造两个文件(`auth.py` 含 login/token,`math_utils.py` 含矩阵运算),用 `search("用户登录凭证", mode="substring")` 与 `mode="hybrid"` 对比排序差异。
@@ -1435,6 +1556,8 @@ follow-up 注入块:
 - ☑ 我能画出三层记忆与其持久化文件的对应关系;
 - ☑ 我能完整复述"重复读文件 2→0"的机制链(自动沉淀 → 哈希去重 → follow-up 注入 / should_re_read);
 - ☑ 我能说出 substring/vector/hybrid 三种模式各自的适用场景。
+
+**对照测试**:`tests/test_memory.py`(19 项:三层存储/哈希去重/检索/followup/持久化)+ `tests/test_vectors.py`(11 项:嵌入/BM25/混合检索)。
 
 ---
 
@@ -1520,6 +1643,8 @@ load 恢复 step: 3
 - ☑ 我能说出三个 checkpoint 触发点,并解释为什么裁剪前必须落盘;
 - ☑ 我能用集合运算复述 modified/added/deleted 的定义。
 
+**对照测试**:`tests/test_checkpoint.py`(15 项:save/load 往返与覆盖、exists/list_all、drift 各分类、summary)。
+
 ---
 
 ## 第 11 章 · 第 8 站 主循环:agent/harness.py(核心站)
@@ -1559,6 +1684,15 @@ def _run(self, task, start_step, metrics, stop_after_steps, drift, reason):
         messages = self.context.assemble()
         # 2. 调用模型
         resp = self.backend.complete(messages, self.registry.schemas())
+        # 2b) 计量:真实 usage(若后端提供)+ 延迟 + 成本
+        usage = getattr(resp, "usage", None) or {}
+        p_tokens = int(usage.get("prompt_tokens") or self.context.last_prune.after_tokens)
+        c_tokens = int(usage.get("completion_tokens") or 0)
+        model_name = getattr(self.backend, "model", "") or "unknown"
+        step_cost = self.cost_tracker.cost_of(model_name, p_tokens, c_tokens)
+        self._emit({"type": "model_call", "index": step_idx, "model": model_name,
+                    "prompt_tokens": p_tokens, "completion_tokens": c_tokens,
+                    "latency_ms": latency_ms, "ts": now_iso()})
         # 3. 终答判断(空终答温和重问)
         if not resp.tool_calls:
             nudge = (not (resp.content or "").strip()
@@ -1577,6 +1711,8 @@ def _run(self, task, start_step, metrics, stop_after_steps, drift, reason):
         if self.context.last_prune.pruned:
             self._checkpoint(task, step_idx + 1, reason="prune")
 ```
+
+**【为什么】计量步(2b)的 fallback 语义要这样设计?** `p_tokens` 优先取后端返回的真实 `usage.prompt_tokens`;取不到(Mock 后端不产生 usage)时退化为**裁剪后 token 估算值** `last_prune.after_tokens`——它是"本步实际送进模型的内容长度"的最佳近似,且零成本可得。`c_tokens` 取不到则用 0 占位(输出文本在 `resp.content` 里可得,但 Mock 场景估算意义不大,宁可如实标 0 也不引入误导性数字)。`step_cost` 经 `CostTracker.cost_of` 按价目表核算(未配置价目时恒为 0,不打扰零依赖运行)。这段计量是评测报告 token/成本列的唯一数据源,三臂对照(第 14 章 6b)能"同口径可比",靠的就是 harness 与裸基线臂都遵守同一套 usage 优先、估算兜底的规则。
 
 **【为什么】空终答要"温和重问"而不直接结束?** 小模型有个典型失败模式:返回"无工具调用 + 空文本"的空转回复(什么都没说就交卷)。直接终止会把"交白卷"静默当成功;直接报错又过于激进(模型可能下一轮就好了)。折中:注入一条用户提醒(`_EMPTY_ANSWER_REMINDER`:对文件的修改必须通过 file_edit/file_write 落盘),给模型**一次**补交机会(`harness.empty_answer_nudges`,默认 1,0 = 关闭),再空就如实终答。每次重问都记录进轨迹(`empty_answer_nudge` 事件),可观测不静默。
 
@@ -1657,6 +1793,74 @@ def resume(self, task_id):
 - 漂移检测在 resume 开头,Agent 知道工作区是否被外部改动
 - metrics 也从快照恢复(`_metrics_restore`)——恢复后的运行指标是**累计**口径,报告才完整
 
+### 11.7 主循环收尾链:任务结束后发生什么
+
+`_run` 的 try/except 结束后(无论 completed/max_steps/interrupted/error)还有一段收尾链,它是"可复盘"与"经验沉淀"的真正落点:
+
+```python
+        # 收尾(状态分派)
+        if status not in ("interrupted", "error"):
+            self._checkpoint(task, len(steps), reason="final")   # 终局断点
+        self._remember_task(task, status, final_answer)          # 记忆任务摘要
+        self._sync_guard_metrics()                               # 抄写安全链计数
+        result_payload = {"status": status, "final_answer": final_answer, "error": error}
+
+        # 可选 SFT 样本采集(artifacts.sft_log,默认关闭)
+        if status == "completed" and self.config.get("artifacts.sft_log", False):
+            write_sft_sample(task_dir=..., task_id=..., instruction=task.goal,
+                             output=final_answer, status=status, redactor=self.redactor)
+
+        self.artifacts.export(task.task_id, self.metrics, result_payload,
+                              checkpoint_obj=self.checkpoint.load(task.task_id))
+        recorder.record({"type": "task_end", "status": status, "ts": now_iso()})
+```
+
+四个动作各司其职:
+
+- **终局 checkpoint(reason="final")**:只在任务走到正常终态时落盘;中断/异常路径已经在各自分支存过(见"异常兜底"),避免覆盖更有诊断价值的错误现场。
+- **`_remember_task()`**:把 (goal, status, 终答前 500 字, files_hint, follow_up_of) 写入结构化记忆的任务层并 `memory.save()` 持久化——**注意它对失败任务同样生效**:状态为 failed/error 的任务摘要也是"经验"(下次 follow-up 能看到上一次为什么没成)。
+- **`_sync_guard_metrics()`**:把安全链自己累计的 `read_cache_hits/skipped_repeats/denied` 一次性抄进 Metrics。**【为什么】** 去重与拦截发生在 guard 的热路径上,若每步都同步到主循环 Metrics 是无谓耦合;任务收尾抄写一次,指标照样完整。
+- **`artifacts.export(..., checkpoint_obj=...)`**:渲染 metrics.json + report.md(含耗时时间线与成本小节);`sft_log` 开启且任务成功时,`write_sft_sample` 额外把 (instruction=goal, output=final_answer) 追加成 `sft_samples.jsonl`——trajectory.jsonl 只记录"agentic 骨架"不含指令原文,所以 SFT 样本必须独立落盘(见 15.5 小文件速览)。
+
+### 11.8 日志与指标口径:get_logger 与 Metrics
+
+**日志初始化**(`get_logger`,模块级函数):
+
+```python
+def get_logger(config) -> logging.Logger:
+    logger = logging.getLogger("mycoder")
+    if not logger.handlers:                       # ← 只在首次装配
+        if fmt_mode == "json":
+            formatter = JsonFormatter()           # 逐行 JSON,可被 json.loads 解析
+        else:
+            formatter = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
+        if config.get("logging.file"):
+            Path(config.get("logging.file")).parent.mkdir(parents=True, exist_ok=True)
+            fh = logging.FileHandler(...)         # 文件 + 控制台双 handler
+        ...
+        logger.propagate = False                  # 不向 root logger 冒泡
+    return logger
+```
+
+三个防御性细节都对应真实事故:`if not logger.handlers` 防止重复 `build()` 时 handler 翻倍导致日志重复;`mkdir(parents=True)` 修复全新 checkout 下 `.mycoder/` 不存在时的 `FileNotFoundError`(CHANGELOG 有记录);`propagate=False` 防止日志经 root logger 再打一遍。`JsonFormatter` 输出 `{"ts","level","logger","message"[,"exc"]}` 的 JSON 行,`logging.format: json` 时启用——结构化日志可直接被日志采集器消费。
+
+**Metrics 的两级口径**。主循环每步累加(`self.metrics.steps += 1` 等),`snapshot()` 在导出时派生均值类字段。对照示例 11-1 运行后的真实快照:
+
+```
+steps=2, tool_calls=1, write_calls=1, files_remembered=1,
+prompt_tokens_total=252, completion_tokens_total=13, cost_usd=0.0,
+avg_prompt_tokens=126.0, avg_completion_tokens=6.5, avg_latency_ms=0.0,
+prunes=0, avg_compression_ratio=0.0, max_compression_ratio=0.0, ...
+```
+
+| 字段 | 来源 | 读法 |
+|------|------|------|
+| `steps` / `tool_calls` / `*_total` | 主循环每步累加 | 全程累计值;`prompt_tokens_total` 即三臂对照里 harness 臂的 prompt 口径 |
+| `avg_prompt_tokens` | snapshot 派生:total/steps | 每步平均 prompt;252/2=126.0 与上例吻合 |
+| `avg_latency_ms` | 每步 latency 累加/步数 | Mock 后端无真实耗时,如实为 0 |
+| `avg/max_compression_ratio` | `compression_ratios` 列表统计 | 每次裁剪的压缩率均值/极值;本例 2 步未触发裁剪故为 0 |
+| `read_cache_hits` / `skipped_repeats` / `denied_actions` | `_sync_guard_metrics()` 收尾抄写 | 安全链行为的任务级汇总 |
+
 **▶ 动手示例 11-1:完整 Harness 离线跑一个任务**(已验证,~15 行,不依赖任何外部服务)
 
 ```python
@@ -1719,21 +1923,296 @@ artifacts: ['checkpoint.json', 'metrics.json', 'report.md', 'trace.json', 'traje
 - ☑ 我能按序说出 _run_one_tool 的七步,并指出哪两步只在成功时执行;
 - ☑ 我能独立完成"中断 → resume"实验并解释 Mock 游标为什么没乱。
 
+**对照测试**:`tests/test_harness.py`(18 项;空终答重问三项:`test_empty_final_answer_nudged_once_then_completes` / `test_empty_answer_budget_exhausted_terminates_honestly` / `test_nudge_disabled_by_config`;恢复类:`test_interrupt_resume_continues` / `test_resume_detects_drift`)。
+
 ---
 
-## 第 12 章 · 第 9 站 评测闭环:eval/
+## 第 12 章 · 第 8b 站 插站·编排层:agent/orchestrator.py
+
+> **本站学习目标**:理解编排器如何把"一个 Harness 跑一个任务"扩展成"多个 Harness 并行跑分解后的子任务";掌握完全隔离沙箱、部分降级与 orchestration.json 的设计。
+> **前置知识**:第 8 站全部内容(子任务就是一台完整 harness)。
+
+### 为什么需要编排层?
+
+主循环解决"一个任务怎么跑完",但真实需求常常是"一个**复杂目标**怎么拆开跑"——例如"实现认证模块并补齐测试"天然含两个可并行的子目标。编排层的设计立场:**复用而非重造**。每个子任务由一台**完整的、独立的** `AgentHarness` 执行(第 8 站的全部能力——上下文治理/记忆/断点/安全——自动继承),编排器只负责三件事:分解、并行调度、聚合。
+
+### 12.1 SubTask 与 Planner:分解(decompose)
+
+```python
+@dataclass
+class SubTask:
+    id: str
+    goal: str
+    status: str = "pending"          # pending | running | completed | failed
+    result: dict | None = None
+    error: str | None = None
+
+def _default_planner(goal: str) -> list[dict]:
+    """确定性退化分解:未提供 LLM planner 时,把目标整体作为一个子任务。"""
+    return [{"id": "sub-1", "goal": goal}]
+```
+- Planner 是**一个可注入的函数**(输入 goal,输出子任务列表);默认实现是"退化分解"——整体当单子任务。**【为什么】** 智能分解需要 LLM(不确定、可能失败),把它隔离在可替换的注入点后面:核心零依赖、离线可跑,生产环境注入 LLM planner 即升级,主流程零改动。
+
+### 12.2 run():并行执行与部分降级
+
+```python
+def run(self, goal, task_id=None):
+    task_id = task_id or ("orch-" + uuid.uuid4().hex[:8])
+    subs = self.decompose(goal)
+    self._emit({"type": "orchestration_start", "task_id": task_id, "subtasks": [...]})
+
+    def _run_one(sub):
+        sub.status = "running"
+        try:
+            backend = self.backend_factory(sub) if self.backend_factory else None
+            harness = self._build_harness(sub, backend)
+            res = harness.run(TaskInput(task_id=f"{task_id}/{sub.id}", goal=sub.goal))
+            sub.status = "completed"
+            sub.result = {"status": res.status, "final_answer": res.final_answer}
+        except Exception as exc:          # 部分降级:单子任务失败不影响其余
+            sub.status = "failed"
+            sub.error = str(exc)
+        return sub
+
+    workers = max(1, min(self.max_workers, len(subs)))
+    with ThreadPoolExecutor(max_workers=workers) as ex:
+        for fut in as_completed({ex.submit(_run_one, s): s for s in subs}):
+            ...  # subtask_end 事件 + 收集结果
+    summary = self.aggregate(list(results.values()))
+    self._export(...)                      # orchestration.json
+    self._emit({"type": "orchestration_end", ...})
+    return artifact
+```
+- `backend_factory(sub)` 按子任务装配后端——CLI 的 `orchestrate` 用它给每个子任务一个独立后端实例;不传则子 harness 走配置后端。
+- **部分降级**:单个子任务的任何异常只把它自己标为 `failed` 并记录 error,绝不向上抛——**【为什么】** "分解成 4 个子任务、成了 3 个"通常仍是有价值的结果;把失败当整体失败会浪费全部已完成的计算。代价由 `summary.failed_ids` 如实披露,不静默。
+- 子任务 task_id 形如 `orch-demo/sub-1`——嵌套 ID 让子任务的 checkpoint/工件天然挂在编排名下。
+
+### 12.3 _build_harness():完全隔离的子任务沙箱
+
+```python
+def _build_harness(self, sub, backend):
+    cfg = Config(self.config.to_dict())            # 配置深拷贝副本
+    base = Path(self.config.get("workspace.root", "."))
+    sub_dir = base / f".orch_{sub.id}"
+    cfg.set("workspace.root",  str(sub_dir / "ws"))
+    cfg.set("memory.root",     str(sub_dir / "memory"))
+    cfg.set("checkpoint.root", str(sub_dir / "checkpoints"))
+    cfg.set("artifacts.root",  str(sub_dir / "artifacts"))
+    cfg.set("observability.enabled", False)
+    return AgentHarness.build(cfg, backend=backend, approver=AllowAllProvider())
+```
+- **完全隔离**:每个子任务在 `.orch_{sub.id}/` 下拥有独立的 ws/memory/checkpoints/artifacts 四个根——**【为什么】** 并行子任务若共享记忆或工件目录,会互相覆盖同名文件、串味检索结果、竞态写 checkpoint;"隔离到目录"是最简单且绝对正确的并发隔离,比加锁便宜一个量级。
+- 子 harness 关闭 observability(细节由编排层事件总线承担,避免每个子任务的 trace 与编排事件混淆)。
+- `approver=AllowAllProvider()`:子任务无人值守执行;高风险 shell 仍受安全链白名单/黑名单约束(审批只是五步链的最后一环)。
+
+### 12.4 聚合与工件:aggregate() 与 orchestration.json
+
+```python
+    @staticmethod
+    def aggregate(subs) -> dict:
+        completed = [s for s in subs if s.status == "completed"]
+        failed = [s for s in subs if s.status == "failed"]
+        return {"total": len(subs), "completed": len(completed), "failed": len(failed),
+                "failed_ids": [s.id for s in failed],
+                "final_answers": {s.id: (s.result or {}).get("final_answer") ...}}
+```
+- 汇总产物 `orchestration.json` 落在 `{artifacts.root}/{orch-xxx}/` 下,含 `subtasks`(每个子任务的 id/goal/status/result/error)与 `summary`——与单任务的 report.md 同级共存,这就是"编排任务也有工件"的落地。
+
+**▶ 动手示例 12-1:离线跑一次编排**(已验证——默认退化分解 + Mock 后端,不需要任何外部服务)
+
+```python
+import tempfile, os
+from mycoder.config import Config
+from mycoder.agent.orchestrator import Orchestrator
+from mycoder.models import MockBackend
+
+tmp = tempfile.mkdtemp()
+cfg = Config()
+cfg.set("artifacts.root", tmp + "/artifacts")
+cfg.set("workspace.root", tmp)
+
+def backend_factory(sub):
+    # 无 script 的 Mock:直接给出终答(真实场景这里返回 LocalOpenAIBackend)
+    return MockBackend(script=[], default_answer=f"子任务[{sub.id}]已交付:{sub.goal}")
+
+orch = Orchestrator(cfg, backend_factory=backend_factory, max_workers=2)
+result = orch.run("实现用户认证模块,并补齐单元测试", task_id="orch-demo")
+print("summary:", result["summary"])
+print("subtasks:", [(s["id"], s["status"]) for s in result["subtasks"]])
+print("artifacts:", sorted(os.listdir(tmp + "/artifacts/orch-demo")))
+print("子任务隔离目录:", sorted(d for d in os.listdir(tmp) if d.startswith(".orch_")),
+      "->", sorted(os.listdir(tmp + "/.orch_sub-1")))
+```
+
+真实输出:
+```
+summary: {'total': 1, 'completed': 1, 'failed': 0, 'failed_ids': [],
+          'final_answers': {'sub-1': '子任务[sub-1]已交付:实现用户认证模块,并补齐单元测试'}}
+subtasks: [('sub-1', 'completed')]
+artifacts: ['orchestration.json']
+子任务隔离目录: ['.orch_sub-1'] -> ['artifacts', 'checkpoints', 'memory', 'ws']
+```
+
+默认 Planner 退化成单子任务(total=1)——这正是"确定性退化分解"的含义;换成注入的 LLM planner 后 `subtasks` 才会真正展开为多个并行臂。
+
+**✍ 练习**
+- 基础:注入一个自定义 planner(如按句号拆分 goal 为多个子任务),重跑示例 12-1,观察 `subtasks` 展开与 `.orch_*` 目录数量。
+- 进阶:让 backend_factory 对某个子任务抛异常,验证 `summary.failed_ids` 与整体返回(不抛出、不中断)——体会部分降级。
+- 进阶:打开 `orchestration.json`,对照 `vars(sub)` 的字段,确认子任务最终答案在 `final_answers` 里。
+
+**⚠ 易错点**
+- 编排器事件(orchestration_start/subtask_end/orchestration_end)只发给构造时传入的 `on_event`;Tracer 默认**不**接收编排事件(它在 harness.build 里挂载,作用域是单任务)。
+- 子任务隔离目录建在**配置的 workspace.root 下**,不是 artifacts.root 下;`orchestration.json` 才在 artifacts.root 下。
+- `max_workers` 被 `min(max_workers, len(subs))` 钳制:2 个子任务配 8 个 worker 也只起 2 个线程。
+
+**☑ 自测清单**
+- ☑ 我能说出编排器复用 harness 的三种收益(治理/记忆/安全自动继承);
+- ☑ 我能解释为什么子任务要四个根完全隔离,以及为什么失败不阻断;
+- ☑ 我知道 orchestration.json 写在哪、子任务工作区在哪。
+
+**对照测试**:`tests/test_orchestrator.py`(4 项:并行编排、失败降级 partial、默认 planner 单子任务、事件发射)。
+
+---
+
+## 第 13 章 · 第 8c 站 插站·可观测性:observability/tracing.py
+
+> **本站学习目标**:理解 trace.json 从何而来:harness 的语义事件如何被 Tracer 重建成 OTLP 风格的 span 树;掌握"埋点绝不拖垮主链路"的工程纪律。
+> **前置知识**:第 8 站 11.2 的 `self._emit(...)` 调用点。
+
+### 为什么已有 trajectory.jsonl 还要链路追踪?
+
+两个工件回答不同的问题:trajectory.jsonl 回答"**发生了什么**"(每步的模型输出/工具调用/参数,面向复盘与评测),trace.json 回答"**耗时花在哪、谁是谁的子步骤**"(span 层级与 duration,面向性能诊断)。实现策略也不同:trajectory 由主循环**逐事件写盘**,trace 则由一个独立消费者 `Tracer` 把事件流**重建成内存中的 span 树**,任务结束时一次性导出。
+
+### 13.1 Span:一个可导出的追踪片段
+
+```python
+@dataclass
+class Span:
+    name: str
+    span_id: str = field(default_factory=lambda: short_id("span_"))
+    parent_span_id: str | None = None
+    trace_id: str | None = None
+    start: str = field(default_factory=now_iso)
+    end: str | None = None
+    status: str = "ok"
+    attributes: dict = field(default_factory=dict)
+    events: list = field(default_factory=list)
+    # 内部字段(不进导出)
+    _start_ns: float = field(default=0.0, repr=False)
+    _end_ns: float = field(default=0.0, repr=False)
+```
+- `to_dict()` 导出的字段集合(`{trace_id, span_id, parent_span_id, name, start, end, duration_ms, status, attributes, events}`)与 OpenTelemetry 的 span 结构**对齐**——**【为什么】** 今天是零依赖的本地 JSON,明天想接真正的 OTLP 收集器时结构不用改。
+- `duration_ms` 由内部纳秒字段计算,不进导出的 `_start_ns/_end_ns` 与外部时间戳分离。
+
+### 13.2 Tracer.handle():语义事件 → span 树
+
+`Tracer` 在 `AgentHarness.build()` 里被挂成默认事件消费者(`tracer.handle` 即 `on_event` 回调)。它按事件类型重建层级:
+
+| 事件 | Tracer 行为 | 生成的 span |
+|------|-------------|-------------|
+| `task_start` | `reset()` 清空上次任务,记下 task_id | `run`(根 span,attributes 带 task_id/reason) |
+| `step_start` | 关闭上一个还开着的 step span | `step:{index}`(父 = run) |
+| `model_call` | 即开即关的叶子 | `model_call`(父 = 当前 step) |
+| `tool_call` | 同上,名字带工具名 | `tool:{name}`(父 = 当前 step) |
+| `checkpoint` | 同上 | `checkpoint:{reason}`(**父 = run**,挂在步骤外) |
+| `task_end` | 关闭开着的 step 与 run span | (无新 span,触发 export) |
+
+树形:一次两步、每步一次模型+一次工具的任务产生 7 个 span(见示例 13-1)。`checkpoint` 挂在 run 下而非 step 下——**【为什么】** checkpoint 可能发生在步与步之间(裁剪前落盘),挂在任何一步下面都会误导归属。
+
+### 13.3 两个工程细节:时间反推与异常隔离
+
+**叶子 span 的时间是"反推"的**:
+```python
+def _on_leaf_span(self, name, event, parent_id):
+    latency = float(event.get("latency_ms", 0) or 0)
+    now_ns = time.time_ns()
+    span = self._start_span(name, parent_id=parent_id,
+                            start_ns=now_ns - int(latency * 1_000_000),  # ← 反推
+                            end_ns=now_ns, attributes={...})
+    self._end_span(span.span_id, status=event.get("status", "ok"))
+```
+**【为什么】** 事件在动作**结束之后**才发出,此刻记 start 会得到 0 耗时;好在事件里带了 `latency_ms`(主循环在 11.2 计量步实测),于是 `start = now - latency` 反推出真实起止。这也解释了一个诚实观察:**`model_call`/`tool:` 叶子 span 的 duration_ms 是真实值,而 `run`/`step`/`checkpoint` span 的 duration_ms 恒为 0**——它们的起止只写了时间戳字段,耗时需用 end−start 自行相减(见示例 13-1 输出)。
+
+**埋点绝不拖垮主链路**:
+```python
+        except Exception:  # 埋点绝不能拖垮主链路
+            pass
+```
+`handle()` 的整个分发包在 try/except 里;OTel 桥接(`_start_span`/`_end_span` 中的镜像调用)同样各自隔离失败。**【为什么】** 观测是主业务的外挂:Tracer 出 bug 不能让任务失败,这优先级必须写进代码结构里,而不是"写代码时小心"。
+
+### 13.4 export():trace.json 落盘
+
+```python
+def export(self, path=None) -> str | None:
+    if not self.enabled:
+        return None
+    target = Path(path) if path else None
+    if target is None and self.artifacts_root and self._task_id:
+        target = Path(self.artifacts_root) / self._task_id / "trace.json"
+    payload = json.dumps(self.to_dict(), ensure_ascii=False, indent=2, default=str)
+    target.write_text(payload, encoding="utf-8")
+```
+- 默认落盘位置 `{artifacts.root}/{task_id}/trace.json`,由 `task_end` 事件自动触发——这解释了第 11 章示例工件清单里的第五件从何而来。
+- 可选桥接:构造时探测 `opentelemetry-api`(缺失则静默降级为 None);可用则同一批 span 镜像到真实 OTel Tracer,`parent` 上下文与本地图谱一致。
+
+**▶ 动手示例 13-1:看懂 trace.json 的 span 树**(已验证——复用第 11 章示例 11-1 的运行)
+
+```python
+# (接着示例 11-1 的 harness.run(...) 之后)
+import json
+trace = json.load(open(tmp + "/artifacts/demo-001/trace.json", encoding="utf-8"))
+print(trace["trace_id"].split("_")[0], "| span_count:", trace["span_count"])
+for s in trace["spans"]:
+    indent = "  " if s["parent_span_id"] else ""
+    print(f"{indent}{s['name']:<22} dur={s['duration_ms']}ms")
+```
+
+真实输出(span_count=7,层级一目了然):
+```
+trace | span_count: 7
+  run                    dur=0.0ms
+    step:0                 dur=0.0ms
+    model_call             dur=0.0ms
+    tool:file_write        dur=13.0ms
+    step:1                 dur=0.0ms
+    model_call             dur=0.0ms
+    checkpoint:final       dur=0.0ms
+```
+
+只有 `tool:file_write` 这类叶子带真实耗时(Mock 无模型耗时,故 model_call 为 0;真实后端下 model_call 同样有值)——事件携带 latency_ms 反推;`run`/`step` 的耗时用其 `end`−`start` 时间戳相减得到。
+
+**✍ 练习**
+- 基础:示例 11-1 中给脚本追加一轮 `file_read`,重跑后确认 trace 中出现 `tool:file_read` 叶子且 `checkpoint:interval` 可能挂在 run 下。
+- 进阶:实现一个 `ConsoleTracer`(复用 `Tracer` 的 handle 逻辑,把每个事件 print 一行),经 `AgentHarness.build(cfg, on_event=my_tracer.handle)` 注入,验证"Tracer 与自定义回调都收到事件"(`_dispatch` 双分发)。
+- 思考:为什么 `step:0` 的关闭发生在 `step:1` 的 start 里(而不是 model_call 之前)?如果任务在第 2 步抛异常,step span 由谁关闭?(提示:`_on_task_end` 的兜底关闭。)
+
+**⚠ 易错点**
+- `observability.enabled: false` 时 `build()` 不挂 Tracer,`export()` 返回 None——trace.json 缺失先查这个开关,而不是以为追踪坏了。
+- 编排器的子 harness 被显式关闭 observability(第 12 章 12.3),所以编排任务的子目录里**没有** trace.json;编排层自己的事件也没有 Tracer span。
+- span 的 `status` 来自事件(工具调用失败会标出);`duration_ms=0` 不代表"瞬间完成",对 run/step 请用时间戳相减。
+
+**☑ 自测清单**
+- ☑ 我能画出 7 类事件到 span 树的映射,并说出 checkpoint 为什么挂 run 下;
+- ☑ 我能解释叶子 span 时间为什么反推、哪些 span 的 duration_ms 是 0;
+- ☑ 我能说出"埋点吞异常"在哪些两层代码里落实。
+
+**对照测试**:`tests/test_observability.py`(7 项:Span/Tracer 生命周期、trace.json 导出、JSON 结构化日志)。
+
+---
+
+## 第 14 章 · 第 9 站 评测闭环:eval/
 
 > **本站学习目标**:理解五层离线评测 + Layer 6/6b/7 的分工;掌握"对照实验"的实验设计方法;学会阅读与解释评测报告。
 > **前置知识**:第 0 章 ⑩(对照实验);第 8 站(各机制如何被度量)。
 
-### 12.1 为什么要评测?评什么?
+### 14.1 为什么要评测?评什么?
 
 "我加了个功能,感觉好了"不是工程语言。**评测定量化**:收益是多少、代价是多少、边界在哪。本项目评测设计的两个基本原则:
 
 1. **用 Mock 冻结模型变量**:五层离线评测全部跑在确定性脚本上——分数变化只能来自系统改动;
 2. **一切结论皆对照**:每个 Layer 都是"开关开 vs 关"或"方案 A vs 方案 B"的双臂/三臂设计。
 
-### 12.2 五层离线评测 + 三个按需 suite
+### 14.2 五层离线评测 + 三个按需 suite
 
 ```
 Layer 1 回归: 运行时稳定性(能完成、工件齐全、断言满足)
@@ -1752,7 +2231,7 @@ Layer 5 检索: 混合检索召回率(substring/vector/hybrid, recall@3)
 
 **benchmark 数据**:26 个手写任务(回归 17/上下文 4/记忆 4/恢复 1,含负例与边界)+ 固定 seed 生成后**冻结入库**的 42 个任务(`benchmarks/tasks.generated.json`,提交进版本控制保证可复现)+ 82 条检索查询。
 
-### 12.3 Layer 2 上下文治理评测(对照实验)
+### 14.3 Layer 2 上下文治理评测(对照实验)
 
 ```python
 def layer_context(self, tasks):
@@ -1765,7 +2244,7 @@ def layer_context(self, tasks):
 ```
 - **A/B 对照**:同一任务,唯一变量是 budget → 压缩率就是治理收益
 
-### 12.4 Layer 3 记忆收益评测
+### 14.4 Layer 3 记忆收益评测
 
 ```python
 def layer_memory(self, tasks):
@@ -1782,7 +2261,7 @@ def layer_memory(self, tasks):
 - **对照变量**:treatment 用 memory_query,control 用 file_read → 重读次数差就是记忆收益(实测 2 → 0)
 - 注意实验设计的细节:**两臂脚本不同但任务相同**——"模型选择用什么方式获取信息"本身就是被测变量之一
 
-### 12.5 Layer 4 恢复正确性评测
+### 14.5 Layer 4 恢复正确性评测
 
 ```python
 def layer_resume(self, tasks):
@@ -1796,7 +2275,7 @@ def layer_resume(self, tasks):
 ```
 - 5×2 全组合矩阵:验证"该报漂移的报了、不该报的没报"(识别 10/10,恢复后完成率 100%)
 
-### 12.6 Layer 5 检索召回评测(benchmarks/retrieval.json + retrieval_extra.json)
+### 14.6 Layer 5 检索召回评测(benchmarks/retrieval.json + retrieval_extra.json)
 
 ```python
 def layer_retrieval(self):
@@ -1818,17 +2297,108 @@ def layer_retrieval(self):
 - **recall@K**:前 K 条结果里"包含了应命中文档"的查询占比——考"找没找到";
 - **MRR@5**(Mean Reciprocal Rank):应命中文档排名倒数的均值(排第 1 得 1 分、第 2 得 0.5 分……)——考"找得好不好,排得靠不靠前"。
 
-### 12.7 如何读懂评测报告
+### 14.7 如何读懂评测报告
 
 `report.md` 按 Layer 分节,每节三要素:**通过率**(如 4/4)、**对照差值**(如 substring 28% vs hybrid 63%)、**结论句**。阅读顺序建议:先看有没有 fail → fail 的去 `.mycoder/eval/` 下对应 JSON 找具体任务 → 对照 `benchmarks/tasks.json` 里该任务的 `expect` 断言字段理解它考什么。`_check_expect` 的断言类型包括:文件存在/内容包含/内容不包含、步数上限、指标阈值等(见 `mycoder/eval/runner.py`)。
 
-**▶ 动手示例 12-1:只跑一层并核对数字**
+**▶ 动手示例 14-1:只跑一层并核对数字**
 
 ```bash
 .conda/python.exe -m mycoder eval --suite retrieval --output .mycoder/eval
 .conda/python.exe -m mycoder eval --suite context  --output .mycoder/eval
 # 报告: .mycoder/eval/report.md —— 重点看"recall@3"与"平均压缩率"两行
 ```
+
+### 14.8 评测公共骨架:所有 Layer 共用的地基
+
+五层离线评测的每个 Layer 都是"搭临时舞台 → 跑一个 Mock 任务 → 检查断言"的变体,公共骨架在 `EvalRunner` 的基础设施区:
+
+**每任务(每对照臂)完全隔离的舞台**:
+
+```python
+def _cfg_for(self, workdir, budget=None, keep_turns=None, memory_enabled=None) -> Config:
+    cfg = Config(self.base_config.to_dict())      # 配置深拷贝副本
+    cfg.set("workspace.root",  str(workdir / "ws"))
+    cfg.set("memory.root",     str(workdir / "memory"))
+    cfg.set("checkpoint.root", str(workdir / "checkpoints"))
+    cfg.set("artifacts.root",  str(workdir / "artifacts"))
+    if budget is not None:
+        cfg.set("context.budget_tokens", budget)
+        cfg.set("context.hard_limit_tokens", int(budget * 1.5))   # 硬限随软预算联动
+    ...
+```
+- **【为什么】** 每个任务、每个对照臂都拿到独立的临时工作区与 Config 副本:任务间零污染,A/B 两臂互不可见;失败任务的现场完整留在 `output_dir/workspaces/<task_id>/`,排障不用重跑。
+
+**固定 Mock 的执行器**:
+
+```python
+def _run(self, task, workdir, script_field="script", ...):
+    cfg = self._cfg_for(workdir, ...)
+    backend = MockBackend(script=task.get(script_field) or [],
+                          default_answer=task.get("answer", "任务已完成。"))
+    harness = AgentHarness.build(cfg, backend=backend, approver=AllowAllProvider())
+    ...
+```
+- `script_field` 参数是 Layer 3 对照实验的机关:treatment 臂读 `script`(memory_query 剧本)、control 臂读 `control_script`(file_read 剧本)——两臂共用同一个 `_run`。
+- `_resume()` 用**同一脚本**新建 harness 后调 `resume()`:后端游标从 checkpoint 恢复,从中断处继续而非从头重放(第 10 章伏笔的评测侧兑现)。
+
+**`_check_expect` 断言类型表**(benchmark 任务的 `expect` 字段,正例/负例/边界统一入口):
+
+| expect 键 | 形态 | 语义 |
+|------|------|------|
+| `status_in` | 状态白名单 | 运行状态须在其中(负例同样要求 mock 轨迹优雅走到终答,不崩溃) |
+| `should_fail_call` | 工具名或列表 | 指定工具必须被拦截/报错,且拦截原因非空 |
+| `cache_hit_call` | 工具名 | 必须观察到去重缓存命中(`meta.cache_hit`) |
+| `files_created` / `no_files_created` | 路径列表 | 必须存在 / 不得存在(后者兼容"路径本就指向工作区外"的外部落点检查) |
+| `file_contains` / `file_not_contains` / `file_equals` | {路径: 片段} | 内容包含 / 不包含 / 全文相等 |
+| `file_unchanged_except` | {路径: 标记} | 编辑不得破坏未涉及区域(保留区标记必须原样存在) |
+| `final_contains` / `final_not_contains` | 片段 | 终答包含 / 不包含 |
+| `probe_contains` / `fold_min` | — | Layer 2 专用:信息保留探针 / 最小折叠次数 |
+
+此外 `layer_regression` 还检查**工件齐全性**(trajectory.jsonl / report.md / metrics.json 三件必须都在)——"能完成任务"与"可复盘"都被断言。`_append_history` 把每次运行的各层 pass_rate 追加到 `eval_history.jsonl`,供跨次指标退化对比。
+
+### 14.9 Layer 6/6b 的实现:RealTaskRunner 与 RawBaselineRunner
+
+两个真实模型 Runner 的类名分别是 `RealTaskRunner`(eval/real.py)与 `RawBaselineRunner`(eval/raw_baseline.py,全项目第二大的评测文件)。三个值得精读的机制:
+
+**① mock 优雅跳过(两者入口相同)**:
+
+```python
+if self.base_config.model_backend == "mock" and self.backend_factory is create_backend:
+    return {"ok": False, "skipped": True, "passed": 0, "total": 0,
+            "summary": "裸基线评测需要 model.backend=local_openai;当前配置为 mock", ...}
+```
+- **【为什么】** mock 后端没有真实能力,跑真实任务评测只会得到噪音;但离线单测通过显式注入 `backend_factory`(身份检查放行)仍可覆盖两臂逻辑。真实输出:`[real_baseline] ok=False summary=裸基线评测需要 model.backend=local_openai;当前配置为 mock`。
+
+**② single_shot 臂:agentless 评测的标准做法**
+
+```python
+_SINGLE_SHOT_SYSTEM = ("你是一个代码生成引擎,只输出文件内容,不要解释。"
+    "对每个需要创建或修改的文件,输出一个代码块,并在代码块语言标注后给出相对路径,格式:\n"
+    "```python path=utils.py\n<完整文件内容>\n```\n...")
+_FENCE_RE = re.compile(r"```([^\n`]*)\n(.*?)```", re.DOTALL)
+```
+- 一次 `complete()` → 正则提取全部 `path=` 代码块 → `_parse_block_path`(`path=xxx` 优先,裸的含 `.`/`/` token 兜底)→ `_write_code_blocks` **确定性落盘**(路径非法/逃逸的块直接跳过,缺失交给硬断言判定)。没有工具循环、没有多轮修正——它度量的是"裸模型一次性输出全部文件"的能力。
+
+**③ naive_loop 臂:刻意削弱的 agent**
+
+```python
+_NAIVE_TOOLS = ("file_read", "file_write", "file_edit", "file_list", "grep_search")
+
+@staticmethod
+def _execute_naive_call(tc, by_name, ctx) -> ToolCall:
+    """裸循环的工具执行:无参数校验/审批/去重(这正是它与 harness 的差异)。"""
+```
+- 工具白名单只留 5 个文件类工具:`shell_exec` 依赖审批链、`memory_query` 依赖结构化记忆,基线臂**刻意不暴露**(避免无审批的任意命令执行);保留 Workspace 文件边界——那是纯粹的安全约束,不属于被评测的"智能"。
+- 工具执行**绕过**第 4 站五步链(无校验/无审批/无去重),这正是"有没有 harness"的实质差异,是被测变量本身。
+- 公平性设计:`max_steps`/`max_tool_calls_per_turn` 与 harness 同预算(步数是被度量的能力,不应人为压低);`_meter` 与 harness 同口径(usage 优先、同一价目表)——三臂数字因此可直接对比。
+- 三臂对照:`_load_harness_reference` 尽力读取 `real_report.json` 作为第三臂;`_comparison` 按 task_id 并排,缺臂显示 `None`(报告里为"—")。**基线臂低通过率是预期测量结果而非失败**,报告的 ok 只表示"测量完成且产生了数据"。
+
+### 14.10 评委与数据原语:LLMJudge / benchmark / experiment
+
+- **LLMJudge**(eval/judge.py):prompt 强约束"只输出一个 JSON 对象";`_parse` 两级兜底——先整体 `json.loads`,失败再用 `re.search(r"\{.*\}", text)` 抽取 JSON 片段重试;`score` 钳制到 [0,5];解析失败返回 `parse_ok=False` 且 `passed=False` 的结论,**原始输出保留在 `raw` 供人工复核**——这就是 Layer 6 实测"2b 小模型评委全打 0 分"时,系统能如实记录而不误判的机制根源。硬断言与评委各司其职:文件是否存在/内容是否正确由 `_check_expect` 确定,评委只做主观质量复核,**不会掩盖硬性失败**。
+- **benchmark.py**:`load_benchmarks()` 把手写 `tasks.json`(26 个)与冻结生成 `tasks.generated.json`(42 个,固定 seed 入库)合并加载;`by_layer()` 按 `layer` 字段过滤——"冻结基准保证可复现"落在这里。
+- **experiment.py**:`compare_metrics(a, b)` 对两份指标字典做 diff,`format_delta()` 渲染成人类可读的差值文本——所有"对照"结论的算术原语。
 
 **✍ 练习**
 - 基础:分别跑 `--suite memory` 与 `--suite resume`,把报告中的关键数字(重读次数、漂移识别率)抄进笔记,并回溯到第 9/10 站指出对应机制。
@@ -1845,14 +2415,16 @@ def layer_retrieval(self):
 - ☑ 我能解释 recall@K 与 MRR@5 的区别,并说出 82 条查询的四个类别;
 - ☑ 我能读懂 report.md 并定位一个失败任务的具体断言。
 
+**对照测试**:`tests/test_eval.py`(18 项:五层评测 + benchmark 数据完整性)+ `tests/test_real_eval.py`(4 项:judge 解析/兜底)+ `tests/test_real_baseline.py`(7 项:两臂/工具白名单/三臂对照/mock 跳过)。
+
 ---
 
-## 第 13 章 · 第 10 站 收尾:cli / api / examples / tests
+## 第 15 章 · 第 10 站 收尾:cli / api / examples / tests
 
 > **本站学习目标**:掌握全部 CLI 子命令;理解 stdlib/FastAPI 两种 API 实现的取舍与事件流;了解测试套件的组织。
 > **前置知识**:第 11 站主循环事件。
 
-### 13.1 CLI (cli.py)
+### 15.1 CLI (cli.py)
 
 ```python
 # 子命令:run / resume / serve / eval / benchmark / artifacts / doctor / orchestrate
@@ -1868,7 +2440,7 @@ def layer_retrieval(self):
 
 **⚠ 再次强调**:CLI 默认加载**内置默认值**;要用 `config/default.yaml` 必须显式 `--config config/default.yaml`(第 1 章易错点)。
 
-### 13.2 API
+### 15.2 API
 
 **标准库服务 (api/server.py)**
 
@@ -1896,7 +2468,68 @@ def layer_retrieval(self):
 - `--impl fastapi` 时由 `create_app()` 装配;默认仍走零依赖的 stdlib 实现(`pip install 'mycoder-harness[api]'` 启用 FastAPI 路径)
 - **【为什么】两种实现并存?** stdlib 版保证"任何一台裸 Python 机器"都能起 API(零依赖哲学);FastAPI 版提供 SSE 与更丰富的接口。默认行为不因可选依赖存在与否而改变。
 
-### 13.3 测试套件
+**接口层内部走读:**
+
+**① TaskEventBus:事件如何从 harness 流到浏览器**(api/event_bus.py,54 行的并发核心):
+
+```python
+class TaskEventBus:
+    def __init__(self):
+        self._queues: dict[str, queue.Queue] = {}
+        self._lock = threading.Lock()
+
+    def register(self, task_id) -> queue.Queue:   # worker 启动前建队列
+        ...
+    def on_event(self, event):                    # harness 回调:按 task_id 路由入队
+        tid = event.get("task_id")
+        if not tid: return                        # 事件不带 task_id → 无法路由,被忽略
+        q = self._queues.get(tid)
+        if q is not None: q.put_nowait(event)
+    def done(self, task_id):                      # worker 结束推 __done__ 哨兵,SSE 据此关流
+        ...
+```
+- harness 的事件多数**不带** task_id(step_start/model_call 等),因此 FastAPI 的 worker 在注入回调里先补全 task_id 再交给总线——这是一个容易忽略的路由前提。
+
+**▶ 动手示例 15-1:事件总线的路由与哨兵**(已验证)
+
+```python
+import queue
+from mycoder.api.event_bus import TaskEventBus
+
+bus = TaskEventBus()
+q = bus.register("t1")
+bus.on_event({"type": "task_start", "task_id": "t1"})
+bus.on_event({"type": "step_end"})            # 不带 task_id → 无法路由,被忽略
+bus.done("t1")                                 # worker 结束:哨兵
+
+got = []
+while True:
+    try: got.append(q.get_nowait()["type"])
+    except queue.Empty: break
+print("收到事件:", got)
+```
+
+真实输出:
+```
+收到事件: ['task_start', '__done__']
+```
+
+**② 后端三级决策**(`_decide_backend`,纯决策不构造实例):
+
+```python
+def _decide_backend(config, task_data) -> str:
+    if task_data.get("script") is not None:
+        return "mock"                     # 1) 带 script 一律锁定 Mock(离线回放,历史行为)
+    choice = task_data.get("backend")
+    if choice in _VALID_BACKENDS:
+        return choice                     # 2) 请求显式指定 backend 字段
+    return config.model_backend           # 3) 缺省跟随服务端配置
+```
+- `_build_backend` 按决策名构造实例:local_openai 通过**配置副本**(`Config(config.to_dict())` 后改 `model.backend`)注入 `create_backend` 工厂——不污染服务端共享配置。
+
+**③ stdlib 实现**(server.py):`ThreadingHTTPServer` + `_HarnessPool` 同步执行任务;无 SSE 能力时,监控页自动退化为状态轮询——同一套前端,两种后端,体验降级但不失效。
+
+### 15.3 测试套件
 
 ```
 test_models.py        (15)  MockBackend 脚本 progression/state恢复
@@ -1922,7 +2555,7 @@ test_performance.py    (8)  压力测试(巨型文件)
 
 **【为什么】把安全边界参数化到 70 项?** 安全不是"测过一次"的事:路径逃逸有无数种写法(`..`、编码变换、绝对路径、盘符……)。参数化让"一个场景 = 一行参数",扩展新边界 case 只加一行。这也是给读者的示范:**你的新工具/新安全规则也应该这样展开测试**。
 
-### 13.4 性能测试
+### 15.4 性能测试
 
 `test_performance.py` 使用 `giant_test.py`(~4669 行)对 8 个维度进行压力测试:
 1. 文件读取 I/O
@@ -1936,7 +2569,18 @@ test_performance.py    (8)  压力测试(巨型文件)
 
 每项 3 轮取平均,输出 avg/min/max 耗时。
 
-**▶ 动手示例 13-1:任务文件驱动的 CLI 一次跑**
+### 15.5 小文件速览:补齐主链外的四块拼图
+
+这些文件都很小,但各自承担一条真实调用链的一环,走读一遍即可:
+
+| 文件 | 关键符号 | 在调用链中的位置 | 要点 |
+|------|----------|------------------|------|
+| `tasks.py`(19 行) | `load_task_file(path)` | CLI `run` 的数据入口 | JSON 直接解析;Markdown 支持 YAML frontmatter(任务元信息)+ 正文作 goal;缺省 task_id 取文件名 |
+| `cost.py`(39 行) | `CostTracker.cost_of(model, p, c)` | 主循环 2b 计量步(11.2) | 纯函数:价目表来自 `model.pricing`(支持 `*` 通配),未配置恒返回 0——不打扰零依赖运行 |
+| `sft_collector.py`(73 行) | `write_sft_sample(task_dir, ...)` | 主循环收尾链(11.7),`artifacts.sft_log` 开启时 | trajectory.jsonl 只记"agentic 骨架"不含指令原文,故 SFT 样本 (instruction=goal, output=final_answer) 独立追加成 `sft_samples.jsonl`,写入前过 Redactor;与轨迹/评测完全解耦,关闭即无感 |
+| `util.py` 其余函数 | `now_iso()` / `short_id(prefix)` / `sha256_text(text)` / `ensure_dir(path)` / `json_dump(obj, path, redactor=...)` | 被全部模块复用 | `short_id` 生成 call_/span_/trace_ 前缀 ID;`json_dump` 统一"可选脱敏 + UTF-8"的落盘出口 |
+
+**▶ 动手示例 15-2:任务文件驱动的 CLI 一次跑**
 
 ```bash
 # 写一个带 script 的任务文件(保存为 task_demo.json):
@@ -1954,9 +2598,9 @@ test_performance.py    (8)  压力测试(巨型文件)
 ```
 
 **✍ 练习**
-- 基础:按示例 13-1 构造任务文件并跑通;然后到 `artifacts_dir` 里打开 report.md。
+- 基础:按示例 15-2 构造任务文件并跑通;然后到 `artifacts_dir` 里打开 report.md。
 - 进阶:`python -m mycoder serve`(stdlib 实现)下用 `curl -X POST` 提交一个带 script 的任务,轮询 `GET /api/run/{id}` 直到 completed。
-- 进阶:`orchestrate --goal "..."` 跑一次编排,打开 `orchestration.json` 观察子任务分解与状态汇总。
+- 进阶:`orchestrate --goal "..."` 跑一次编排,打开 `orchestration.json` 观察子任务分解与状态汇总(机制见第 12 章)。
 
 **⚠ 易错点**
 - `run` 的任务文件若不带 `script`,会按 `--backend`/配置装配后端(默认 mock,但无脚本的 Mock 只会直接终答)——想看真实模型行为要显式 `--backend local_openai` 且 Ollama 在线。
@@ -1966,13 +2610,16 @@ test_performance.py    (8)  压力测试(巨型文件)
 **☑ 自测清单**
 - ☑ 我能写出 8 个 CLI 子命令并用任务文件跑通 run;
 - ☑ 我能解释 stdlib/FastAPI 双实现共存的理由;
+- ☑ 我能说出 TaskEventBus 的 task_id 路由前提与 __done__ 哨兵的作用;
 - ☑ 我知道 272 项测试分布在哪些文件、安全测试为什么特别多。
+
+**对照测试**:`tests/test_api.py`(7 项:health/监控页、SSE 事件流、后端字段校验、双跑对照)、`tests/test_observability.py`(见第 13 章)。
 
 ---
 
 # 第六部分 总结
 
-## 第 14 章 设计模式回顾与核心数据流
+## 第 16 章 设计模式回顾与核心数据流
 
 | 模式 | 落地位置 | 作用 |
 |------|----------|------|
@@ -1993,7 +2640,7 @@ TaskInput → Harness.run() → [assemble → complete → check → execute →
 
 > 复习建议:把上表当成**面试自测题**——遮住"落地位置"列,看模式名能否说出本项目在哪用了它、为什么用;再遮住"作用"列反向自测。
 
-## 第 15 章 读完之后:实操进阶路线
+## 第 17 章 读完之后:实操进阶路线
 
 读完本指南后,建议按以下顺序实操(均已预装,`conda activate D:\PythonProject\mycoder\.conda` 后直接运行):
 
@@ -2029,7 +2676,7 @@ TaskInput → Harness.run() → [assemble → complete → check → execute →
 | 终答(final answer) | 模型不再发起工具调用时给出的回复,任务就此结束 |
 | 空终答温和重问(nudge) | 模型返回空回复时注入用户提醒再给一次机会,上限 `harness.empty_answer_nudges` |
 | follow-up(后续任务) | 以 `follow_up_of` 指向父任务的新任务,自动继承父任务记忆摘要 |
-| Orchestrator(编排器) | 把目标分解为子任务、以独立工作区并行执行的组件 |
+| Orchestrator(编排器) | 把目标分解为子任务、以独立工作区并行执行的组件;产出 orchestration.json,Planner 可注入 LLM 实现智能分解 |
 
 **模型侧**
 | 术语 | 定义 |
@@ -2078,7 +2725,9 @@ TaskInput → Harness.run() → [assemble → complete → check → execute →
 | 漂移(Drift) | 中断期间工作区被外部改动;逐文件 SHA-256 精确比对 |
 | 原子写 | 临时文件 + os.replace,杜绝半截文件 |
 | 工件(Artifacts) | 三类产物:trajectory.jsonl / checkpoint.json / metrics.json+report.md(另有 trace.json) |
-| trace.json | OTLP 风格链路追踪(span 层级与耗时) |
+| trace.json | OTLP 风格链路追踪(span 层级与耗时),Tracer 在 task_end 时自动导出 |
+| orchestration.json | 编排任务的汇总工件:子任务分解/状态/最终答案 |
+| Span / Tracer | 追踪片段与事件消费者:把 harness 的 7 类语义事件重建成 span 树(第 13 章) |
 | SFT 样本 | 任务成功时可选导出的 (instruction, output) 微调数据(`artifacts.sft_log`) |
 
 **评测**
@@ -2138,7 +2787,7 @@ TaskInput → Harness.run() → [assemble → complete → check → execute →
 | `safety.allow_write_outside_ext` | `[]` | 额外允许写入的扩展名 | — |
 | `artifacts.root` | `.mycoder/artifacts` | 工件目录 | 第 1 站 |
 | `artifacts.redact_artifacts` | `true` | 导出工件时脱敏 | 第 4 站 |
-| `artifacts.sft_log` | `false` | 成功任务导出 SFT 样本 | 第 15 章 |
+| `artifacts.sft_log` | `false` | 成功任务导出 SFT 样本 | 第 17 章 |
 | `logging.level` | `INFO` | 日志级别 | — |
 | `logging.file` | `.mycoder/harness.log` | 日志文件 | — |
 | `logging.format` | `text` | `text` / `json`(结构化行) | 第 10 站 |
@@ -2177,7 +2826,7 @@ TaskInput → Harness.run() → [assemble → complete → check → execute →
 
 ## 附录 D 测试与 benchmark 数据索引
 
-- 测试文件清单与数量:见第 13.3 节表(共 **272 项 / 18 文件**)。运行方式:`.conda/python.exe -m pytest tests/`。
+- 测试文件清单与数量:见第 15.3 节表(共 **272 项 / 18 文件**)。运行方式:`.conda/python.exe -m pytest tests/`。
 - benchmark 数据(`benchmarks/`):
 
 | 文件 | 内容 |
@@ -2216,6 +2865,10 @@ TaskInput → Harness.run() → [assemble → complete → check → execute →
   A:三种方式:改配置 `model.backend: local_openai`;CLI `--backend local_openai`;监控页「执行后端」选择。前提:Ollama 在线且 `model` 名与 `ollama list` 一致。
 - **Q:`real_baseline` 报告在哪?为什么和 `real` 在同一个目录?**
   A:`--suite real` 与 `--suite real_baseline` 都写 `.mycoder/real/` 且**互相不清空**,就是为了三臂对照共存(`real_report.json` + `real_baseline_report.json`)。
+- **Q:`trace.json` 和 `orchestration.json` 分别是谁写的?在哪找?**
+  A:`trace.json` 由 Tracer 在 task_end 事件时写到 `{artifacts.root}/{task_id}/trace.json`(机制见第 13 章);`orchestration.json` 由 `Orchestrator._export` 写到 `{artifacts.root}/{orch-xxx}/` 下(见第 12 章)。注意编排任务的子任务目录(`.orch_*/`)里**没有** trace——子 harness 的 observability 被编排器显式关闭。
+- **Q:跑 `orchestrate` 需要真实模型吗?**
+  A:不需要。默认 Planner 是确定性退化分解(整体当一个子任务),mock 后端下子 harness 直接以默认终答完成,可离线验证编排链路(示例 12-1);要真正的多臂并行需注入 LLM planner。
 
 **原理类**
 
@@ -2244,7 +2897,7 @@ TaskInput → Harness.run() → [assemble → complete → check → execute →
 **扩展开发类**
 
 - **Q:加一个新工具要做哪几件事?**
-  A:继承 `Tool` → 声明 name/description/parameters/danger → 实现 `execute`(不写安全代码)→ 注册进 `build_registry` → 若有路径参数登记 `_PATH_TOOLS` → 补测试(第 15 章任务 A)。
+  A:继承 `Tool` → 声明 name/description/parameters/danger → 实现 `execute`(不写安全代码)→ 注册进 `build_registry` → 若有路径参数登记 `_PATH_TOOLS` → 补测试(第 17 章任务 A)。
 - **Q:想换摘要/嵌入/审批策略?**
   A:三者都是策略接口:Summarizer / EmbeddingProvider / ApprovalProvider,实现并注入即可。
 - **Q:怎么接入非 OpenAI 兼容的模型?**
@@ -2274,6 +2927,8 @@ TaskInput → Harness.run() → [assemble → complete → check → execute →
 | 16 | CLI 改配置不生效 | 未传 `--config` | 第 1/10 站 |
 | 17 | 检索想用语义匹配但结果和 substring 一样 | `memory.retrieval.mode` 仍是默认 substring | 第 6 站 |
 | 18 | `.mycoder/` 越来越大 | 工件/记忆/断点持续落盘;评测前 runner 自行重置,平时可手动清理(不入库) | 第 2 章 |
+| 19 | trace.json / orchestration.json 找不到 | 前者查 `{artifacts.root}/{task_id}/`(确认 `observability.enabled`);后者查 `{artifacts.root}/{orch-xxx}/`;编排子任务目录无 trace(被编排器关闭) | 第 12/13 章 |
+| 20 | 编排任务看起来"只跑了一个子任务" | 默认 Planner 是确定性退化分解(整体当一个子任务);注入 LLM planner 才会真正分解 | 第 12 章 |
 
 **调试三板斧**:
 1. **看轨迹**:`.mycoder/artifacts/<task_id>/trajectory.jsonl` 逐行读,每一步的模型输出/工具调用/拦截原因/裁剪策略都在里面;
@@ -2291,10 +2946,12 @@ TaskInput → Harness.run() → [assemble → complete → check → execute →
 - **上下文**:三层裁剪策略与触发条件?全量重算 + 深拷贝为什么是确定性的根基?启发式 token 的取舍?
 - **记忆**:三层存储与持久化文件?"重读 2→0"的机制链?hybrid vs substring 的实测差距?
 - **断点**:快照五大组成?三个落盘时机?漂移的集合运算定义?
-- **主循环**:六步默写?_run_one_tool 七步?空终答温和重问?中断→恢复全流程?
-- **评测**:五层各自"固定/改变/度量"什么?recall@K 与 MRR?三臂对照(6b)的实验设计?
+- **主循环**:六步默写?_run_one_tool 七步?空终答温和重问?中断→恢复全流程?收尾链四动作?metrics 累计与 snapshot 派生两级口径?
+- **编排层(插站)**:为什么子任务四根完全隔离?部分降级的取舍?默认退化分解的意义?
+- **可观测性(插站)**:7 类事件→span 树映射?哪些 span 的 duration_ms 是 0、为什么?埋点吞异常落实在哪两层?
+- **评测**:五层各自"固定/改变/度量"什么?recall@K 与 MRR?三臂对照(6b)的实验设计?_check_expect 的断言类型?
 - **收尾**:8 个 CLI 子命令?双 API 实现取舍?272 项测试的分布与安全参数化思想?
 
 ---
 
-> **版本与维护说明**:本文档与代码同步维护;文中数字(272 项测试、82 条查询、26+42 任务、三臂数据)为当前版本实测。若你按第 15 章做了扩展并改变了这些数字,请一并更新对应章节——文档与代码一样,也需要"测试"。
+> **版本与维护说明**:本文档与代码同步维护;文中数字(272 项测试、82 条查询、26+42 任务、三臂数据)为当前版本实测。若你按第 17 章做了扩展并改变了这些数字,请一并更新对应章节——文档与代码一样,也需要"测试"。
