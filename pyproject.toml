@@ -3,13 +3,13 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "mycoder-harness"
+name = "agentmuster"
 version = "0.1.0"
-description = "MyCoder — 本地 Coding Agent Harness(面向代码仓库长链路任务的本地 Agent 运行底座)"
+description = "AgentMuster — 本地 Coding Agent Harness(面向代码仓库长链路任务的本地 Agent 运行底座)"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = { text = "MIT" }
-authors = [{ name = "MyCoder Dev" }]
+authors = [{ name = "AgentMuster Dev" }]
 keywords = ["agent", "harness", "tool-calling", "context-management", "checkpoint", "memory", "llm"]
 dependencies = [
     "PyYAML>=6.0",
@@ -30,14 +30,15 @@ vector = ["fastembed>=0.3"]
 otel = ["opentelemetry-api>=1.27", "opentelemetry-sdk>=1.27"]
 
 [project.scripts]
-mycoder = "mycoder.cli:main"
+agentmuster = "agentmuster.cli:main"
+mycoder = "agentmuster.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["mycoder*"]
+include = ["agentmuster*"]
 
 [tool.setuptools.package-data]
-"mycoder.api" = ["static/*.js"]   # vendored Vue 3 运行时(离线监控页用)
+"agentmuster.api" = ["static/*.js"]   # vendored Vue 3 运行时(离线监控页用)
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -51,7 +52,7 @@ markers = [
 ]
 
 [tool.coverage.run]
-source = ["mycoder"]
+source = ["agentmuster"]
 branch = true
 
 [tool.coverage.report]
@@ -61,10 +62,10 @@ fail_under = 0
 
 [tool.ruff]
 line-length = 110
-target-version = "py310"
+target-version = "py311"
 # 示例/生成脚本不参与 lint(giant_test.py 为约 4669 行的生成产物)
-# conda 环境目录(项目内置 .conda 与 CI 复刻用 .conda-*)不参与 lint
-exclude = ["examples", "generate_test_file.py", ".conda", ".conda-*"]
+# conda 环境目录(项目内置 .conda 与 CI 复刻用 .conda-*)与运行期产物(.mycoder/.pytest_tmp)不参与 lint
+exclude = ["examples", "generate_test_file.py", ".conda", ".conda-*", ".mycoder", ".pytest_tmp"]
 
 [tool.ruff.lint]
 select = [
@@ -85,11 +86,11 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"mycoder/api/monitor_page.py" = ["E501"]
+"agentmuster/api/monitor_page.py" = ["E501"]
 
 [tool.mypy]
-python_version = "3.10"
-files = ["mycoder", "tests"]
+python_version = "3.11"
+files = ["agentmuster", "tests"]
 ignore_missing_imports = true
 check_untyped_defs = true
 no_implicit_optional = true

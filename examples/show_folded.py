@@ -3,9 +3,9 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from mycoder.config import Config
-from mycoder.context import ContextManager, estimate_messages
-from mycoder.state import Message
+from agentmuster.config import Config
+from agentmuster.context import ContextManager, estimate_messages
+from agentmuster.state import Message
 
 giant = Path("examples/giant_test.py").read_text(encoding="utf-8")
 lines = giant.splitlines()

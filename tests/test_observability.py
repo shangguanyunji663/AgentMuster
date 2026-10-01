@@ -2,8 +2,8 @@
 import json
 from pathlib import Path
 
-from mycoder.observability import Span, Tracer
-from mycoder.state import TaskInput
+from agentmuster.observability import Span, Tracer
+from agentmuster.state import TaskInput
 
 
 def _feed(tracer: Tracer) -> None:
@@ -80,7 +80,7 @@ class TestJsonLogging:
     def test_json_formatter_parseable(self):
         import logging
 
-        from mycoder.agent.harness import JsonFormatter
+        from agentmuster.agent.harness import JsonFormatter
 
         fmt = JsonFormatter()
         rec = logging.LogRecord("x", logging.INFO, "p", 1, "hello %s", ("world",), None)

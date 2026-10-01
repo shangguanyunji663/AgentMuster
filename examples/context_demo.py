@@ -9,9 +9,9 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from mycoder.config import Config
-from mycoder.context import ContextManager, estimate_tokens, estimate_messages
-from mycoder.state import Message
+from agentmuster.config import Config
+from agentmuster.context import ContextManager, estimate_tokens, estimate_messages
+from agentmuster.state import Message
 
 # Load giant test file (simulates large tool outputs)
 GIANT = Path("examples/giant_test.py")

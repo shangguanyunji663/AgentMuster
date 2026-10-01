@@ -1,4 +1,4 @@
-# Complete MyCoder project environment (managed by Conda)
+# Complete AgentMuster project environment (managed by Conda)
 -r requirements-dev.txt
 -r requirements-api.txt
 -r requirements-vector.txt

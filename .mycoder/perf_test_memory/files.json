@@ -1,0 +1,14 @@
+{
+  "examples/giant_test.py": {
+    "path": "examples/giant_test.py",
+    "sha256": "f9bb2f352de95a025c1ea866efc961ae4dc0f6a13253017370e62cfd93592c4c",
+    "size": 143599,
+    "summary": "Giant test file with 4669 lines",
+    "symbols": [],
+    "acquired_from": [
+      "perf-test"
+    ],
+    "last_read_at": "2026-10-02T00:53:16.780",
+    "updated_at": "2026-10-02T00:53:16.780"
+  }
+}

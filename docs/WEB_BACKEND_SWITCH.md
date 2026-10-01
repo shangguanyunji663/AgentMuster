@@ -49,13 +49,13 @@ GET  /api/run/{id}     快照透出新字段: backend(实际使用)/arm/compare_
 GET  /api/runs         列表同步携带上述三元组,前端据此分组渲染
 ```
 
-### 5.2 服务端改造(mycoder/api/fastapi_server.py)
+### 5.2 服务端改造(agentmuster/api/fastapi_server.py)
 
 - `_build_backend(cfg, task_data)` 升级:解析优先级 `显式 backend 字段 > script 存在 > 配置默认`;注入配置副本的 `model.backend` 后交工厂构造,返回 `(backend, resolved_name)`
 - 任务记录持久化三元组 `{backend, arm, compare_group}`,随快照与列表接口透出
 - stdlib 版 server.py **保持不动**(Mock-only,与既有文档口径一致)
 
-### 5.3 前端改造(mycoder/api/monitor_page.py)
+### 5.3 前端改造(agentmuster/api/monitor_page.py)
 
 1. 提交卡新增「执行后端」三选一控件;非"跟随配置"档才将 backend 写入请求体
 2. 新增「▶ 双跑对比」按钮 → POST /api/compare → 同时订阅两臂 SSE
@@ -102,4 +102,4 @@ GET  /api/runs         列表同步携带上述三元组,前端据此分组渲�
 ## 附注:设计定稿时的仓库现状备忘
 
 - `config/default.yaml` 在设计讨论期间被临时翻转为 `backend: local_openai`(qwen3.5:2b@11434)——早于"以 MOCK 为主"决策确认,**实施第 0 步必须先回滚**,并以注释说明切换方式。
-- `mycoder/api/monitor_page.py` 中"总是携带空 script 导致页面永远走 Mock"的缺陷已在设计方案确定前修复(改为有脚本才携带字段),API 测试 3 项通过;该项 Fixed 尚未记入 CHANGELOG,随实施第 4 步一并补记。
+- `agentmuster/api/monitor_page.py` 中"总是携带空 script 导致页面永远走 Mock"的缺陷已在设计方案确定前修复(改为有脚本才携带字段),API 测试 3 项通过;该项 Fixed 尚未记入 CHANGELOG,随实施第 4 步一并补记。

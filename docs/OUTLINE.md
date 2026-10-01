@@ -1,4 +1,4 @@
-# MyCoder 项目大纲
+# AgentMuster 项目大纲
 
 ## 项目目标
 
@@ -81,7 +81,7 @@
 
 ### 13. 命令行接口
 - `cli.py`: argparse 子命令(run/resume/serve/orchestrate/eval/benchmark/artifacts/doctor)
-- `__main__.py`: python -m mycoder 入口
+- `__main__.py`: python -m agentmuster 入口
 
 ## Benchmark 任务设计
 
@@ -144,16 +144,16 @@
 ## 文件清单
 
 ### 核心代码 (~35 个 Python 文件)
-- mycoder/__init__.py, __main__.py, cli.py, config.py, state.py, util.py, artifacts.py, tasks.py
-- mycoder/models/: base.py, mock.py, local_openai.py, __init__.py
-- mycoder/tools/: base.py, sandbox.py, file_tools.py, shell_tool.py, memory_tool.py, __init__.py
-- mycoder/context/: tokens.py, summarizer.py, manager.py, __init__.py
-- mycoder/memory/: store.py, retriever.py, __init__.py
-- mycoder/checkpoint/: store.py, drift.py, __init__.py
-- mycoder/safety/: guard.py, redact.py, __init__.py
-- mycoder/agent/: harness.py, __init__.py
-- mycoder/api/: server.py, __init__.py
-- mycoder/eval/: benchmark.py, experiment.py, runner.py, judge.py, real.py, raw_baseline.py, __init__.py
+- agentmuster/__init__.py, __main__.py, cli.py, config.py, state.py, util.py, artifacts.py, tasks.py
+- agentmuster/models/: base.py, mock.py, local_openai.py, __init__.py
+- agentmuster/tools/: base.py, sandbox.py, file_tools.py, shell_tool.py, memory_tool.py, __init__.py
+- agentmuster/context/: tokens.py, summarizer.py, manager.py, __init__.py
+- agentmuster/memory/: store.py, retriever.py, __init__.py
+- agentmuster/checkpoint/: store.py, drift.py, __init__.py
+- agentmuster/safety/: guard.py, redact.py, __init__.py
+- agentmuster/agent/: harness.py, __init__.py
+- agentmuster/api/: server.py, __init__.py
+- agentmuster/eval/: benchmark.py, experiment.py, runner.py, judge.py, real.py, raw_baseline.py, __init__.py
 
 ### 测试 (18 个测试文件,272 个测试用例)
 - tests/conftest.py
@@ -202,7 +202,7 @@
 
 ```bash
 # 使用项目内置 Conda 环境 .conda/(Python 3.11,已预装全部依赖,无需安装)
-conda activate D:\PythonProject\mycoder\.conda
+conda activate D:\PythonProject\agentmuster\.conda
 # 或不激活直接用: .conda/python.exe <...>
 
 # 运行 demo
@@ -218,19 +218,19 @@ python -m pytest tests/
 python -m pytest tests/test_performance.py -v
 
 # 运行评测
-python -m mycoder eval --suite all
+python -m agentmuster eval --suite all
 
 # 运行 Layer 6b 裸基线对照(需 model.backend=local_openai,即本地 Ollama)
-python -m mycoder eval --suite real_baseline --output .mycoder/real
+python -m agentmuster eval --suite real_baseline --output .agentmuster/real
 
 # 启动 API(标准库,零依赖)
-python -m mycoder serve
+python -m agentmuster serve
 
 # 启动 API(FastAPI + SSE 实时追踪,需 api 依赖组)
-python -m mycoder serve --impl fastapi
+python -m agentmuster serve --impl fastapi
 
 # 子代理编排
-python -m mycoder orchestrate --goal "实现用户认证模块并补齐单元测试"
+python -m agentmuster orchestrate --goal "实现用户认证模块并补齐单元测试"
 ```
 
 ## 扩展建议
@@ -239,7 +239,7 @@ python -m mycoder orchestrate --goal "实现用户认证模块并补齐单元测
 2. **添加新模型后端**: 继承 ModelBackend,实现 complete()
 3. **添加新安全策略**: 实现 ApprovalProvider 接口
 4. **添加新评测层**: 在 EvalRunner 中添加 layer_xxx() 方法
-5. **增强检索**: 接入 `FastEmbedEmbedder`(pip install 'mycoder-harness[vector]')提升语义召回
+5. **增强检索**: 接入 `FastEmbedEmbedder`(pip install 'agentmuster-harness[vector]')提升语义召回
 
 ## 已知限制
 

@@ -1,7 +1,7 @@
 """工作区沙箱:路径隔离、rel 兼容、指纹快照。"""
 import pytest
 
-from mycoder.tools import PathEscapeError, Workspace
+from agentmuster.tools import PathEscapeError, Workspace
 
 
 @pytest.fixture

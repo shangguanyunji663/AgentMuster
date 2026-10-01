@@ -1,4 +1,4 @@
-# MyCoder 一键部署: ollama(本地模型)+ mycoder(API 服务)
+# AgentMuster 一键部署: ollama(本地模型)+ agentmuster(API 服务)
 # 用法:
 #   docker compose up -d          # 首次会自动构建镜像并拉取模型
 #   健康检查: curl http://127.0.0.1:8910/health
@@ -26,7 +26,7 @@ services:
       timeout: 5s
       retries: 12
 
-  mycoder:
+  agentmuster:
     build: .
     depends_on:
       ollama:
@@ -34,8 +34,8 @@ services:
     ports:
       - "8910:8910"
     volumes:
-      - mycoder_data:/app/.mycoder
+      - agentmuster_data:/app/.agentmuster
 
 volumes:
   ollama_models:
-  mycoder_data:
+  agentmuster_data:

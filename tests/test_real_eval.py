@@ -1,9 +1,9 @@
 import json
 
-from mycoder.config import Config
-from mycoder.eval.judge import LLMJudge
-from mycoder.eval.real import RealTaskRunner
-from mycoder.models import MockBackend
+from agentmuster.config import Config
+from agentmuster.eval.judge import LLMJudge
+from agentmuster.eval.real import RealTaskRunner
+from agentmuster.models import MockBackend
 
 
 def test_judge_parses_strict_json():

@@ -12,7 +12,7 @@ from typing import Any
 
 import pytest
 
-from mycoder.models.local_openai import LocalOpenAIBackend
+from agentmuster.models.local_openai import LocalOpenAIBackend
 
 
 def _empty_headers() -> HTTPMessage:
@@ -68,7 +68,7 @@ def backend():
 
 
 def _patch_urlopen(monkeypatch, fake):
-    monkeypatch.setattr("mycoder.models.local_openai.urllib.request.urlopen", fake)
+    monkeypatch.setattr("agentmuster.models.local_openai.urllib.request.urlopen", fake)
 
 
 class TestRetry:

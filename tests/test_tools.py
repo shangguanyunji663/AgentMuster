@@ -1,7 +1,7 @@
 """7 类工具的功能测试(read/write/edit/list/grep/shell/memory_query)。"""
 import pytest
 
-from mycoder.tools import PathEscapeError, ToolContext, build_registry
+from agentmuster.tools import PathEscapeError, ToolContext, build_registry
 
 
 @pytest.fixture

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Giant test file for testing MyCoder with large complex code
+Giant test file for testing AgentMuster with large complex code
 Total lines: ~5000
 Contains: algorithms, data structures, design patterns, math, etc.
 """

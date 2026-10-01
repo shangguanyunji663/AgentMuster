@@ -1,4 +1,4 @@
-# MyCoder 项目学习指南(完整版)— 从零构建并吃透一个本地 Coding Agent Harness
+# AgentMuster 项目学习指南(完整版)— 从零构建并吃透一个本地 Coding Agent Harness
 
 > 本文档按照"如果你要从头写这个项目,你会怎么思考和编码"的顺序,逐模块拆解每一行代码的设计意图与实现细节。它同时具备四种特性:**详细**(完整覆盖核心概念与背景知识,不跳步)、**深入**(讲清每个设计背后的"为什么")、**易上手**(零基础视角,每章配可运行示例与练习)、**易检索**(结构统一、术语一致、附录速查)。建议按顺序阅读,每个模块读完后对照源码走一遍。
 >
@@ -67,7 +67,7 @@
 - **✍ 练习**:分"基础"(巩固概念)与"进阶"(动手改造)两档。
 - **⚠ 易错点**:真实容易踩的坑,与[附录 F](#附录-f-易错点与调试技巧大全)汇总索引互相引用。
 - **☑ 自测清单**:每站末尾,能全部答"是"再进入下一站。
-- 代码引用格式 `mycoder/agent/harness.py:287` 表示仓库内文件与行号(行号基于当前版本,可能随代码演进而漂移,以函数名为准)。
+- 代码引用格式 `agentmuster/agent/harness.py:287` 表示仓库内文件与行号(行号基于当前版本,可能随代码演进而漂移,以函数名为准)。
 - 术语首次出现时用粗体并给出定义;统一译法见[附录 A](#附录-a-完整术语表按主题分组),例如 checkpoint 统一译"断点"、artifact 统一译"工件"、prune 统一译"裁剪"。
 
 ---
@@ -84,7 +84,7 @@
 
 **Harness(运行底座/主循环)** 则是围绕这个循环的全部工程设施。打个比方:LLM 是发动机,Harness 是整辆车——油门刹车(安全边界)、油箱仪表(上下文治理与指标)、导航记录(轨迹与断点)、后视镜(记忆)。发动机再好,没有车你也上不了路。
 
-MyCoder 的定位:**不训练模型、不调用云端 API**,而是围绕任意一个"OpenAI 兼容"的本地模型(或确定性 Mock)搭建一个**可复现、可恢复、可审计**的 Agent 运行底座。
+AgentMuster 的定位:**不训练模型、不调用云端 API**,而是围绕任意一个"OpenAI 兼容"的本地模型(或确定性 Mock)搭建一个**可复现、可恢复、可审计**的 Agent 运行底座。
 
 ### 0.2 单次调用 vs 工具循环 vs 完整 Harness
 
@@ -94,7 +94,7 @@ MyCoder 的定位:**不训练模型、不调用云端 API**,而是围绕任意�
 |------|------|--------------|--------------------------|--------------|
 | single_shot | 一次请求把任务全问完 | 无 | 无 | **1/4** |
 | naive_loop | 朴素 tool-calling 循环 | 有 | 无 | **3/4** |
-| full harness | MyCoder 完整主循环 | 有 | 有 | **4/4** |
+| full harness | AgentMuster 完整主循环 | 有 | 有 | **4/4** |
 
 三点结论,也是贯穿全文档的主线:
 
@@ -104,11 +104,11 @@ MyCoder 的定位:**不训练模型、不调用云端 API**,而是围绕任意�
 
 ### 0.3 必懂的 10 个基础概念
 
-每个概念按"是什么 → 在 MyCoder 里的对应物 → 为什么重要"三段展开。深入实现见对应"站"。
+每个概念按"是什么 → 在 AgentMuster 里的对应物 → 为什么重要"三段展开。深入实现见对应"站"。
 
-**① Token(词元)。** LLM 处理文本的最小单位,一个英文单词约 1~2 个 token,一个汉字通常恰好 1 个 token。模型按 token 计费、按 token 限制上下文。→ MyCoder 用启发式估算(中文按字、英文 4 字符≈1 token),见第 5 站 tokens.py。
+**① Token(词元)。** LLM 处理文本的最小单位,一个英文单词约 1~2 个 token,一个汉字通常恰好 1 个 token。模型按 token 计费、按 token 限制上下文。→ AgentMuster 用启发式估算(中文按字、英文 4 字符≈1 token),见第 5 站 tokens.py。
 
-**② 上下文窗口(context window)与预算。** 模型一次能"看见"的全部文本上限。超窗直接报错;接近上限时质量也会劣化。→ MyCoder 用两个配置表达:`context.budget_tokens`(软预算,4000,超了就触发折叠)与 `context.hard_limit_tokens`(硬上限,6000,任何情况下不得越过),见第 5 站。
+**② 上下文窗口(context window)与预算。** 模型一次能"看见"的全部文本上限。超窗直接报错;接近上限时质量也会劣化。→ AgentMuster 用两个配置表达:`context.budget_tokens`(软预算,4000,超了就触发折叠)与 `context.hard_limit_tokens`(硬上限,6000,任何情况下不得越过),见第 5 站。
 
 **③ System Prompt(系统提示)。** 放在消息列表最前面、定义 Agent 身份与规则的消息。→ `ContextManager` 内置 `SYSTEM_PROMPT`,规定"路径必须是工作区相对路径""优先用记忆避免重复读文件"等行为准则。
 
@@ -128,7 +128,7 @@ MyCoder 的定位:**不训练模型、不调用云端 API**,而是围绕任意�
 
 ### 0.4 新手常见的 5 个观念误区
 
-1. **"Agent 强不强,取决于模型强不强。"** 部分正确但有误导。Layer 6b 实测显示:同一个 2b 小模型,套上不同系统(单次调用/朴素循环/完整 Harness),通过率从 1/4 到 4/4。**系统能力与模型能力是两个正交的变量**,MyCoder 的整个评测设计(用 Mock 固定模型能力、只测系统能力)就是建立在这个区分上。
+1. **"Agent 强不强,取决于模型强不强。"** 部分正确但有误导。Layer 6b 实测显示:同一个 2b 小模型,套上不同系统(单次调用/朴素循环/完整 Harness),通过率从 1/4 到 4/4。**系统能力与模型能力是两个正交的变量**,AgentMuster 的整个评测设计(用 Mock 固定模型能力、只测系统能力)就是建立在这个区分上。
 2. **"上下文窗口够大(128k+)就不需要治理。"** 三个反驳:成本随 token 线性增长;窗口里塞满无关历史会稀释关键信息(信噪比下降);评测需要可复现的 prompt 长度。治理不是为了"塞得下",而是为了"又小又准又稳"。
 3. **"Mock 后端没意义,我要直接测真模型。"** 反了。真模型有随机性,跑两次结果不同,你无法判断改动是好是坏。Mock 是**确定性的**,它把"模型能力"这个变量冻结,让评测只度量系统能力;真模型评测(Layer 6/6b)是在 Mock 证明系统正确之后的补充。
 4. **"安全可以最后再补。"** 安全必须与业务**正交**(分离):工具只管做事,安全链在进入工具前统一拦截。事后补安全意味着每个工具都要自己记得防逃逸、防注入,迟早漏一处。
@@ -151,7 +151,7 @@ MyCoder 的定位:**不训练模型、不调用云端 API**,而是围绕任意�
 
 | 项目 | 说明 |
 |------|------|
-| 环境位置 | `D:\PythonProject\mycoder\.conda\`(相对仓库即 `<repo>\.conda`) |
+| 环境位置 | `D:\PythonProject\agentmuster\.conda\`(相对仓库即 `<repo>\.conda`) |
 | 管理方式 | Anaconda 以**路径(prefix)**方式管理,环境名显示为完整路径 |
 | Python 版本 | 3.11(pyproject 声明兼容 3.10+) |
 | 预装内容 | 全部运行时依赖 + dev/api/vector 可选组 + 项目本体可编辑安装(`pip install -e .`) |
@@ -161,7 +161,7 @@ MyCoder 的定位:**不训练模型、不调用云端 API**,而是围绕任意�
 
 ```bash
 # 1) 激活后使用 python(PowerShell/cmd)
-conda activate D:\PythonProject\mycoder\.conda
+conda activate D:\PythonProject\agentmuster\.conda
 
 # 2) Git Bash 中激活
 source .conda/Scripts/activate
@@ -175,7 +175,7 @@ source .conda/Scripts/activate
 | 操作 | Git Bash | PowerShell / cmd |
 |------|----------|------------------|
 | 直接跑 | `.conda/python.exe -m pytest tests/` | `.conda\python.exe -m pytest tests/` |
-| 激活 | `source .conda/Scripts/activate` | `conda activate D:\PythonProject\mycoder\.conda` |
+| 激活 | `source .conda/Scripts/activate` | `conda activate D:\PythonProject\agentmuster\.conda` |
 | 路径分隔 | `/`(正斜杠) | `\`(反斜杠) |
 
 ### 1.2 验证环境可用
@@ -183,7 +183,7 @@ source .conda/Scripts/activate
 ```bash
 .conda/python.exe --version                       # 应输出 Python 3.11.x
 .conda/python.exe -m pytest tests/ --collect-only -q | tail -3   # 应列出 272 个用例
-.conda/python.exe -m mycoder doctor               # 内置环境自检:打印配置/依赖诊断
+.conda/python.exe -m agentmuster doctor               # 内置环境自检:打印配置/依赖诊断
 ```
 
 ### 1.3 环境坏了/换机器怎么重建(一条命令,全部依赖自动就位)
@@ -199,18 +199,18 @@ conda env create -p .conda -f environment.yml
 | 症状 | 原因 | 解法 |
 |------|------|------|
 | `conda: command not found` | conda 不在 PATH | 用完整路径,如 `D:\miniconda3\Scripts\conda.exe`;或干脆用方式 3 直接调 `.conda/python.exe` |
-| `ModuleNotFoundError: mycoder` | 用了别的 Python,或不在仓库根目录 | 确认用 `.conda/python.exe`,且 `cd` 到仓库根再执行 |
+| `ModuleNotFoundError: agentmuster` | 用了别的 Python,或不在仓库根目录 | 确认用 `.conda/python.exe`,且 `cd` 到仓库根再执行 |
 | `pytest: command not found` | 未激活环境 | 用 `.conda/python.exe -m pytest` 形式 |
 | 中文输出乱码 | Windows 控制台默认 GBK | 设置环境变量 `PYTHONIOENCODING=utf-8`,或用 Git Bash / Windows Terminal |
-| 路径含中文/空格导致奇怪报错 | 部分工具链对非 ASCII 路径不友好 | 把仓库放到纯英文路径(如 `D:\PythonProject\mycoder`) |
+| 路径含中文/空格导致奇怪报错 | 部分工具链对非 ASCII 路径不友好 | 把仓库放到纯英文路径(如 `D:\PythonProject\agentmuster`) |
 | pytest 收集数不是 272 | 环境不完整或收集到旧缓存 | 删除 `tests/__pycache__`、`.pytest_cache` 后重试;必要时重建环境 |
 | `.conda` 目录被杀毒软件锁定导致安装失败 | 实时防护拦截 | 将仓库目录加入白名单后重建 |
 
-**⚠ 易错点**:CLI(`python -m mycoder ...`)**默认只加载内置默认值,不会自动读 `config/default.yaml`**;要用本文件的配置,必须显式传 `--config config/default.yaml`(见 `mycoder/cli.py` 的 `_build_config`)。这是"我明明改了配置怎么没生效"的头号原因。
+**⚠ 易错点**:CLI(`python -m agentmuster ...`)**默认只加载内置默认值,不会自动读 `config/default.yaml`**;要用本文件的配置,必须显式传 `--config config/default.yaml`(见 `agentmuster/cli.py` 的 `_build_config`)。这是"我明明改了配置怎么没生效"的头号原因。
 
 **✍ 练习(基础)**
 1. 用方式 3 跑通 1.2 节的三条验证命令,把输出贴到你的笔记里;
-2. 运行 `.conda/python.exe -m mycoder doctor`,逐行理解它打印了什么。
+2. 运行 `.conda/python.exe -m agentmuster doctor`,逐行理解它打印了什么。
 
 **☑ 自测清单**:我能不假思索地写出"在 Git Bash 里用项目内解释器跑 pytest"的命令。
 
@@ -266,8 +266,8 @@ Giant file: 4669 lines, 143599 chars, 35900 tokens
 ### 第 4 步:跑五层离线评测(~1 分钟,拿到量化报告)
 
 ```bash
-.conda/python.exe -m mycoder eval --suite all --output .mycoder/eval
-cat .mycoder/eval/report.md        # Windows 记事本/VS Code 打开亦可
+.conda/python.exe -m agentmuster eval --suite all --output .agentmuster/eval
+cat .agentmuster/eval/report.md        # Windows 记事本/VS Code 打开亦可
 ```
 
 预期:report.md 依次给出 Layer 1 回归 / Layer 2 上下文(压缩率 ~80%)/ Layer 3 记忆(follow-up 重读 2→0)/ Layer 4 恢复(10 场景漂移识别 100%)/ Layer 5 检索(recall@3:substring 28% vs hybrid 63%)五段结果。报告怎么读,见第 14 章。
@@ -275,9 +275,9 @@ cat .mycoder/eval/report.md        # Windows 记事本/VS Code 打开亦可
 ### 第 5 步:启动 API + 浏览器监控页(~1 分钟)
 
 ```bash
-.conda/python.exe -m mycoder serve --impl fastapi
+.conda/python.exe -m agentmuster serve --impl fastapi
 # 另开一个终端:
-curl http://127.0.0.1:8910/health        # {"service":"mycoder","version":"0.1"}
+curl http://127.0.0.1:8910/health        # {"service":"agentmuster","version":"0.1"}
 ```
 
 浏览器打开 `http://127.0.0.1:8910/`:这是零构建的 Vue 3 监控页。提交一个任务(mock 后端默认离线可跑),SSE 会实时推送 task_start → step_start → model_call → tool_call → step_end → task_end 事件流。
@@ -298,7 +298,7 @@ curl http://127.0.0.1:8910/health        # {"service":"mycoder","version":"0.1"}
 
 **⚠ 易错点**
 - 所有命令都要在**仓库根目录**执行;`examples/context_demo.py` 依赖 `examples/giant_test.py` 的相对路径。
-- 第 4 步评测会在仓库里生成 `.mycoder/` 目录(工件/记忆/断点),这是正常的,已入 .gitignore;评测 runner 每次运行前会自行重置该目录(但 `real`/`real_baseline` 两个 suite 例外,**不清空**输出目录以便三臂对照共存)。
+- 第 4 步评测会在仓库里生成 `.agentmuster/` 目录(工件/记忆/断点),这是正常的,已入 .gitignore;评测 runner 每次运行前会自行重置该目录(但 `real`/`real_baseline` 两个 suite 例外,**不清空**输出目录以便三臂对照共存)。
 
 **☑ 自测清单**:四条命令(pytest / context_demo / eval / serve)我都能独立跑出正确输出。
 
@@ -438,7 +438,7 @@ class Config:
 **▶ 动手示例 4-1:配置的三层来源**(已验证)
 
 ```python
-from mycoder.config import Config
+from agentmuster.config import Config
 
 cfg = Config()                                  # 第 1 层:内置 DEFAULT
 print(cfg.get("context.budget_tokens"))         # 4000
@@ -503,7 +503,7 @@ class Step:
 **▶ 动手示例 4-2:消息 ↔ OpenAI 格式**(已验证)
 
 ```python
-from mycoder.state import Message, TaskInput
+from agentmuster.state import Message, TaskInput
 
 m = Message("tool", "# a.py 共 2 行\ndef add(a, b):", name="file_read", tool_call_id="call_0")
 print(m.to_openai())
@@ -586,7 +586,7 @@ class Metrics:
 **✍ 练习**
 - 基础:示例 4-1 改为加载 `config/default.yaml` 后打印 `harness.max_steps`、`safety.hitl_policy`、`memory.retrieval.mode` 三个键;把 `context.keep_last_turns` 改成 2 并确认 `get()` 读到新值。
 - 基础:为 `Message` 补一个 `meta={"file_hash": "abc"}`,调用 `to_openai()` 确认 meta **不会**泄漏到外部格式。
-- 进阶:自己实现一个 `_deep_merge`,与 `mycoder/config.py` 的版本对拍:构造"用户只覆盖 context 节一个键"的用例,断言其他 context 键仍在、且 `cfg.set` 不影响原始 YAML 字典。
+- 进阶:自己实现一个 `_deep_merge`,与 `agentmuster/config.py` 的版本对拍:构造"用户只覆盖 context 节一个键"的用例,断言其他 context 键仍在、且 `cfg.set` 不影响原始 YAML 字典。
 
 **⚠ 易错点**
 - `cfg.set()` 只改内存,不写回 YAML 文件;进程重启即失效。
@@ -766,11 +766,11 @@ for event in self._post_sse(payload):
 
 ```python
 import json, tempfile
-from mycoder.config import Config
-from mycoder.context import ContextManager
-from mycoder.state import Message
-from mycoder.models import MockBackend
-from mycoder.tools import Workspace
+from agentmuster.config import Config
+from agentmuster.context import ContextManager
+from agentmuster.state import Message
+from agentmuster.models import MockBackend
+from agentmuster.tools import Workspace
 
 cfg = Config()
 ctx = ContextManager(cfg)
@@ -985,9 +985,9 @@ class MemoryQueryTool(Tool):
 
 ```python
 import tempfile
-from mycoder.config import Config
-from mycoder.tools import Workspace, ToolContext, build_registry
-from mycoder.tools.sandbox import PathEscapeError
+from agentmuster.config import Config
+from agentmuster.tools import Workspace, ToolContext, build_registry
+from agentmuster.tools.sandbox import PathEscapeError
 
 ws = Workspace(tempfile.mkdtemp())          # 默认 allow_absolute=False
 ws.write_text("a.py", "def add(a, b):\n    return a + b\n")
@@ -1147,9 +1147,9 @@ class Redactor:
 
 ```python
 import tempfile
-from mycoder.config import Config
-from mycoder.safety import SafetyGuard, Redactor
-from mycoder.tools import Workspace, ReadFileTool
+from agentmuster.config import Config
+from agentmuster.safety import SafetyGuard, Redactor
+from agentmuster.tools import Workspace, ReadFileTool
 
 ws = Workspace(tempfile.mkdtemp())
 ws.write_text("a.py", "x = 1\n")
@@ -1225,7 +1225,7 @@ def estimate_messages(messages) -> int:
 **▶ 动手示例 8-1:估算直觉校准**(已验证)
 
 ```python
-from mycoder.context import estimate_tokens
+from agentmuster.context import estimate_tokens
 print(estimate_tokens("你好世界 hello world"))   # 7  = 4 汉字 + ceil(12/4)
 print(estimate_tokens("def add(a, b):\n    return a + b"))  # 8
 ```
@@ -1312,9 +1312,9 @@ def ratio(self) -> float:
 **▶ 动手示例 8-2:亲手触发三层裁剪**(已验证;完整 15 轮版请跑 `examples/context_demo.py`,真实输出见第 2 章第 3 步)
 
 ```python
-from mycoder.config import Config
-from mycoder.context import ContextManager
-from mycoder.state import Message
+from agentmuster.config import Config
+from agentmuster.context import ContextManager
+from agentmuster.state import Message
 
 cfg = Config()
 cfg.set("context.hard_limit_tokens", 6000)
@@ -1488,8 +1488,8 @@ hybrid = {i: self.alpha * d_n.get(i, 0.0) + (1 - self.alpha) * s_n.get(i, 0.0)
 
 ```python
 import tempfile
-from mycoder.memory import StructuredMemory
-from mycoder.tools import Workspace
+from agentmuster.memory import StructuredMemory
+from agentmuster.tools import Workspace
 
 ws = Workspace(tempfile.mkdtemp())
 ws.write_text("a.py", "def add(a, b):\n    return a + b\n")
@@ -1519,7 +1519,7 @@ follow-up 注入块:
 **▶ 动手示例 9-2:三路检索手算**(已验证——2 个文档、1 个查询,每个数字都能手工复核)
 
 ```python
-from mycoder.memory.vectors import HashingEmbedder, BM25, VectorIndex, HybridRetriever, tokenize
+from agentmuster.memory.vectors import HashingEmbedder, BM25, VectorIndex, HybridRetriever, tokenize
 
 emb = HashingEmbedder(dim=64, ngram=2)     # 小维度便于演示
 docs = {"d1": "用户登录需要校验token", "d2": "矩阵乘法线性代数运算"}
@@ -1548,7 +1548,7 @@ BM25: [('d1', 1.42), ('d2', 0.0)]
 - 进阶:读 `memory/store.py` 的 `stats()`,打印你实验后的记忆统计(任务数/文件数/关系数)。
 
 **⚠ 易错点**
-- 记忆默认持久化在 `.mycoder/memory/`;单测/实验请把 `memory.root` 指到临时目录,避免污染下一次实验。
+- 记忆默认持久化在 `.agentmuster/memory/`;单测/实验请把 `memory.root` 指到临时目录,避免污染下一次实验。
 - follow-up 注入需要**两个条件同时满足**:任务带 `follow_up_of` 字段 且 配置 `memory.followup_inject_summaries: true`。少了任何一个,"记忆收益评测"都会退化。
 - `search()` 返回的是**格式化文本块**(给模型看的),不是结构化列表;要程序化消费请用 `get_task()/get_file()/rank()`。
 
@@ -1568,7 +1568,7 @@ BM25: [('d1', 1.42), ('d2', 0.0)]
 
 ### 为什么"中断可恢复"对 Agent 是一等公民需求?
 
-长任务跑几十步、每步一次模型调用,几十分钟很常见——网络抖动、进程被杀、人工暂停都可能发生。没有断点,中断意味着全部重来(时间与 token 双重浪费)。MyCoder 把 checkpoint 做成**自包含快照**:只凭快照本身 + 当前工作区,就能在全新进程里续跑。
+长任务跑几十步、每步一次模型调用,几十分钟很常见——网络抖动、进程被杀、人工暂停都可能发生。没有断点,中断意味着全部重来(时间与 token 双重浪费)。AgentMuster 把 checkpoint 做成**自包含快照**:只凭快照本身 + 当前工作区,就能在全新进程里续跑。
 
 ### 10.1 store.py — 断点存储
 
@@ -1608,8 +1608,8 @@ class WorkspaceDriftDetector:
 
 ```python
 import tempfile
-from mycoder.checkpoint import CheckpointStore, WorkspaceDriftDetector
-from mycoder.tools import Workspace
+from agentmuster.checkpoint import CheckpointStore, WorkspaceDriftDetector
+from agentmuster.tools import Workspace
 
 cps = CheckpointStore(tempfile.mkdtemp())
 cps.save("t1", {"step_index": 3, "goal": "demo"})
@@ -1828,7 +1828,7 @@ def resume(self, task_id):
 
 ```python
 def get_logger(config) -> logging.Logger:
-    logger = logging.getLogger("mycoder")
+    logger = logging.getLogger("agentmuster")
     if not logger.handlers:                       # ← 只在首次装配
         if fmt_mode == "json":
             formatter = JsonFormatter()           # 逐行 JSON,可被 json.loads 解析
@@ -1842,7 +1842,7 @@ def get_logger(config) -> logging.Logger:
     return logger
 ```
 
-三个防御性细节都对应真实事故:`if not logger.handlers` 防止重复 `build()` 时 handler 翻倍导致日志重复;`mkdir(parents=True)` 修复全新 checkout 下 `.mycoder/` 不存在时的 `FileNotFoundError`(CHANGELOG 有记录);`propagate=False` 防止日志经 root logger 再打一遍。`JsonFormatter` 输出 `{"ts","level","logger","message"[,"exc"]}` 的 JSON 行,`logging.format: json` 时启用——结构化日志可直接被日志采集器消费。
+三个防御性细节都对应真实事故:`if not logger.handlers` 防止重复 `build()` 时 handler 翻倍导致日志重复;`mkdir(parents=True)` 修复全新 checkout 下 `.agentmuster/` 不存在时的 `FileNotFoundError`(CHANGELOG 有记录);`propagate=False` 防止日志经 root logger 再打一遍。`JsonFormatter` 输出 `{"ts","level","logger","message"[,"exc"]}` 的 JSON 行,`logging.format: json` 时启用——结构化日志可直接被日志采集器消费。
 
 **Metrics 的两级口径**。主循环每步累加(`self.metrics.steps += 1` 等),`snapshot()` 在导出时派生均值类字段。对照示例 11-1 运行后的真实快照:
 
@@ -1865,15 +1865,15 @@ prunes=0, avg_compression_ratio=0.0, max_compression_ratio=0.0, ...
 
 ```python
 import tempfile
-from mycoder.config import Config
-from mycoder.agent.harness import AgentHarness
-from mycoder.models import MockBackend
-from mycoder.state import TaskInput
+from agentmuster.config import Config
+from agentmuster.agent.harness import AgentHarness
+from agentmuster.models import MockBackend
+from agentmuster.state import TaskInput
 
 tmp = tempfile.mkdtemp()
 cfg = Config()
 cfg.set("artifacts.root", tmp + "/artifacts")     # 工件/记忆/断点全部重定向,
-cfg.set("memory.root", tmp + "/memory")           # 不污染仓库 .mycoder/
+cfg.set("memory.root", tmp + "/memory")           # 不污染仓库 .agentmuster/
 cfg.set("checkpoint.root", tmp + "/checkpoints")
 cfg.set("logging.file", tmp + "/harness.log")
 cfg.set("safety.hitl_policy", "allow")
@@ -1912,7 +1912,7 @@ artifacts: ['checkpoint.json', 'metrics.json', 'report.md', 'trace.json', 'traje
 - 进阶:构造一个"读去重"场景:脚本连续两轮用相同参数 file_read 同一文件,跑完后打印 `result.metrics["read_cache_hits"]` 与 `read_calls`,解释为什么 2 次调用只有 1 次 `read_calls`。
 
 **⚠ 易错点**
-- 示例若**不**重定向 artifacts/memory/checkpoint 根,会在仓库当前目录生成 `.mycoder/`——评测与实验请养成临时目录习惯。
+- 示例若**不**重定向 artifacts/memory/checkpoint 根,会在仓库当前目录生成 `.agentmuster/`——评测与实验请养成临时目录习惯。
 - `resume` 前提是 checkpoint 存在;`AgentHarness.build` 与当初 run 时要用**同一个** `checkpoint.root`,否则"找不到断点"。
 - Mock 脚本两轮都写终答、不发起工具调用 → 任务 1 步就 completed,`tool_calls=0`——不是 bug,是脚本决定的。
 - 主循环的"步"计数与工具调用数不是一回事:一步可含多个工具调用(上限 8),空终答重问也会占一步。
@@ -2022,9 +2022,9 @@ def _build_harness(self, sub, backend):
 
 ```python
 import tempfile, os
-from mycoder.config import Config
-from mycoder.agent.orchestrator import Orchestrator
-from mycoder.models import MockBackend
+from agentmuster.config import Config
+from agentmuster.agent.orchestrator import Orchestrator
+from agentmuster.models import MockBackend
 
 tmp = tempfile.mkdtemp()
 cfg = Config()
@@ -2224,7 +2224,7 @@ Layer 5 检索: 混合检索召回率(substring/vector/hybrid, recall@3)
 
 在离线五层之上还有几个**按需运行**的 suite(需本地模型或下载,不进 pytest):
 - **Layer 6 真实任务评测**:Ollama(qwen3.5:2b)端到端执行 + 硬断言 + LLM-as-judge(`--suite real`,demo 脚本 `examples/real_model_demo.py`)
-- **Layer 6b 裸模型基线对照**:固定模型与 Layer 6 同一任务集,只改"有没有 harness"——`single_shot`(单次调用,无工具循环)与 `naive_loop`(朴素 tool-calling 循环,无治理/记忆/断点/安全链)两条裸基线臂;存在 Layer 6 报告时自动并排三臂对照,直接度量 harness 的增量价值(`--suite real_baseline`,配置节 `eval.real_baseline`,实现 `mycoder/eval/raw_baseline.py`)
+- **Layer 6b 裸模型基线对照**:固定模型与 Layer 6 同一任务集,只改"有没有 harness"——`single_shot`(单次调用,无工具循环)与 `naive_loop`(朴素 tool-calling 循环,无治理/记忆/断点/安全链)两条裸基线臂;存在 Layer 6 报告时自动并排三臂对照,直接度量 harness 的增量价值(`--suite real_baseline`,配置节 `eval.real_baseline`,实现 `agentmuster/eval/raw_baseline.py`)
 - **Layer 7 嵌入器对照**:FastEmbed bge-small vs 默认 HashingEmbedder 的检索收益对比(`--suite embedder`)
 
 **核心理念**:用同一个确定性 mock 轨迹驱动,唯一变量是 harness 系统开关 → 测的是**系统能力**,不是模型能力。
@@ -2291,7 +2291,7 @@ def layer_retrieval(self):
 
 - **对照变量**:同一查询,`mode="hybrid"`(向量 cosine + BM25 加权) vs `mode="substring"`(字面匹配)
 - **82 条实测结论**(默认零依赖 HashingEmbedder):分类通过率 exact 23/23、synonym 29/29、distractor 11/11、empty 19/19;平均 recall@3 substring=28% vs hybrid=63%;MRR@5 substring=0.44 vs hybrid=0.98 —— 字面匹配在"同义改写"场景大幅掉队,混合检索显著占优 → 实证记忆检索需要语义向量
-- **Layer 7 延伸对照**:`python -m mycoder eval --suite embedder` 用 FastEmbed bge-small(真实神经嵌入,首次运行需下载模型)替换 HashingEmbedder 再跑同一数据集,量化升级收益
+- **Layer 7 延伸对照**:`python -m agentmuster eval --suite embedder` 用 FastEmbed bge-small(真实神经嵌入,首次运行需下载模型)替换 HashingEmbedder 再跑同一数据集,量化升级收益
 
 **指标释义**(新手常混):
 - **recall@K**:前 K 条结果里"包含了应命中文档"的查询占比——考"找没找到";
@@ -2299,14 +2299,14 @@ def layer_retrieval(self):
 
 ### 14.7 如何读懂评测报告
 
-`report.md` 按 Layer 分节,每节三要素:**通过率**(如 4/4)、**对照差值**(如 substring 28% vs hybrid 63%)、**结论句**。阅读顺序建议:先看有没有 fail → fail 的去 `.mycoder/eval/` 下对应 JSON 找具体任务 → 对照 `benchmarks/tasks.json` 里该任务的 `expect` 断言字段理解它考什么。`_check_expect` 的断言类型包括:文件存在/内容包含/内容不包含、步数上限、指标阈值等(见 `mycoder/eval/runner.py`)。
+`report.md` 按 Layer 分节,每节三要素:**通过率**(如 4/4)、**对照差值**(如 substring 28% vs hybrid 63%)、**结论句**。阅读顺序建议:先看有没有 fail → fail 的去 `.agentmuster/eval/` 下对应 JSON 找具体任务 → 对照 `benchmarks/tasks.json` 里该任务的 `expect` 断言字段理解它考什么。`_check_expect` 的断言类型包括:文件存在/内容包含/内容不包含、步数上限、指标阈值等(见 `agentmuster/eval/runner.py`)。
 
 **▶ 动手示例 14-1:只跑一层并核对数字**
 
 ```bash
-.conda/python.exe -m mycoder eval --suite retrieval --output .mycoder/eval
-.conda/python.exe -m mycoder eval --suite context  --output .mycoder/eval
-# 报告: .mycoder/eval/report.md —— 重点看"recall@3"与"平均压缩率"两行
+.conda/python.exe -m agentmuster eval --suite retrieval --output .agentmuster/eval
+.conda/python.exe -m agentmuster eval --suite context  --output .agentmuster/eval
+# 报告: .agentmuster/eval/report.md —— 重点看"recall@3"与"平均压缩率"两行
 ```
 
 ### 14.8 评测公共骨架:所有 Layer 共用的地基
@@ -2407,8 +2407,8 @@ def _execute_naive_call(tc, by_name, ctx) -> ToolCall:
 
 **⚠ 易错点**
 - `--suite real / real_baseline` **不清空**输出目录(两份报告要共存做三臂对照),其余 suite 每次运行会重置输出目录——别把自定义文件放进去。
-- Layer 6/6b 需要 Ollama 在本地跑着且模型已拉取;judge 用 2b 小模型曾出现全部打 0 分的不可靠结果——judge 结果要人工抽查,不要只看通过率(项目如实保留这一现象于 `.mycoder/real/real_report.json`)。
-- 跑评测会写 `.mycoder/` 与临时工作区,不要在评测输出目录里放个人文件。
+- Layer 6/6b 需要 Ollama 在本地跑着且模型已拉取;judge 用 2b 小模型曾出现全部打 0 分的不可靠结果——judge 结果要人工抽查,不要只看通过率(项目如实保留这一现象于 `.agentmuster/real/real_report.json`)。
+- 跑评测会写 `.agentmuster/` 与临时工作区,不要在评测输出目录里放个人文件。
 
 **☑ 自测清单**
 - ☑ 我能说出五层离线评测各自"固定什么、改变什么、度量什么";
@@ -2446,7 +2446,7 @@ def _execute_naive_call(tc, by_name, ctx) -> ToolCall:
 
 ```python
 # ThreadingHTTPServer,127.0.0.1:8910
-# GET /health → {"service":"mycoder","version":"0.1"}
+# GET /health → {"service":"agentmuster","version":"0.1"}
 # POST /run → 启动任务
 # POST /resume → 恢复任务
 ```
@@ -2465,7 +2465,7 @@ def _execute_naive_call(tc, by_name, ctx) -> ToolCall:
 ```
 
 - `TaskEventBus`(api/event_bus.py)是事件中枢:harness 的 `on_event` 回调把事件推入总线,既驱动 SSE,也写入 `trace.json`
-- `--impl fastapi` 时由 `create_app()` 装配;默认仍走零依赖的 stdlib 实现(`pip install 'mycoder-harness[api]'` 启用 FastAPI 路径)
+- `--impl fastapi` 时由 `create_app()` 装配;默认仍走零依赖的 stdlib 实现(`pip install 'agentmuster-harness[api]'` 启用 FastAPI 路径)
 - **【为什么】两种实现并存?** stdlib 版保证"任何一台裸 Python 机器"都能起 API(零依赖哲学);FastAPI 版提供 SSE 与更丰富的接口。默认行为不因可选依赖存在与否而改变。
 
 **接口层内部走读:**
@@ -2494,7 +2494,7 @@ class TaskEventBus:
 
 ```python
 import queue
-from mycoder.api.event_bus import TaskEventBus
+from agentmuster.api.event_bus import TaskEventBus
 
 bus = TaskEventBus()
 q = bus.register("t1")
@@ -2593,19 +2593,19 @@ test_performance.py    (8)  压力测试(巨型文件)
 #     {"content": "notes.txt 记录:周三发布 v1.2。"}
 #   ]
 # }
-.conda/python.exe -m mycoder run --task-file task_demo.json --hitl-policy allow
+.conda/python.exe -m agentmuster run --task-file task_demo.json --hitl-policy allow
 # 输出 JSON:status / metrics / final_answer / artifacts_dir
 ```
 
 **✍ 练习**
 - 基础:按示例 15-2 构造任务文件并跑通;然后到 `artifacts_dir` 里打开 report.md。
-- 进阶:`python -m mycoder serve`(stdlib 实现)下用 `curl -X POST` 提交一个带 script 的任务,轮询 `GET /api/run/{id}` 直到 completed。
+- 进阶:`python -m agentmuster serve`(stdlib 实现)下用 `curl -X POST` 提交一个带 script 的任务,轮询 `GET /api/run/{id}` 直到 completed。
 - 进阶:`orchestrate --goal "..."` 跑一次编排,打开 `orchestration.json` 观察子任务分解与状态汇总(机制见第 12 章)。
 
 **⚠ 易错点**
 - `run` 的任务文件若不带 `script`,会按 `--backend`/配置装配后端(默认 mock,但无脚本的 Mock 只会直接终答)——想看真实模型行为要显式 `--backend local_openai` 且 Ollama 在线。
 - `serve` 起两个实例会端口冲突(默认 8910);改 `--port` 即可。
-- FastAPI 实现需要 api 依赖组;报 `fastapi 未安装` 时 `pip install 'mycoder-harness[api]'` 或退回 stdlib。
+- FastAPI 实现需要 api 依赖组;报 `fastapi 未安装` 时 `pip install 'agentmuster-harness[api]'` 或退回 stdlib。
 
 **☑ 自测清单**
 - ☑ 我能写出 8 个 CLI 子命令并用任务文件跑通 run;
@@ -2642,12 +2642,12 @@ TaskInput → Harness.run() → [assemble → complete → check → execute →
 
 ## 第 17 章 读完之后:实操进阶路线
 
-读完本指南后,建议按以下顺序实操(均已预装,`conda activate D:\PythonProject\mycoder\.conda` 后直接运行):
+读完本指南后,建议按以下顺序实操(均已预装,`conda activate D:\PythonProject\agentmuster\.conda` 后直接运行):
 
 1. `.conda/python.exe -m pytest tests/` — 全部测试通过(离线基线 270 passed + 2 skipped),建立"改动前基线"
 2. `python examples/context_demo.py` — 直观看到上下文治理的压缩效果
-3. `python -m mycoder eval --suite all --output .mycoder/eval` — 生成五层评测报告并打开 report.md
-4. `python -m mycoder serve` + 浏览器打开 http://127.0.0.1:8910/ — Vue 监控页提交任务,SSE 实时看事件流
+3. `python -m agentmuster eval --suite all --output .agentmuster/eval` — 生成五层评测报告并打开 report.md
+4. `python -m agentmuster serve` + 浏览器打开 http://127.0.0.1:8910/ — Vue 监控页提交任务,SSE 实时看事件流
 5. 阅读 `tests/test_harness.py` 理解主循环测试方式
 6. 尝试修改 `config/default.yaml` 的参数(如 budget_tokens),重跑评测观察行为变化
 
@@ -2741,7 +2741,7 @@ TaskInput → Harness.run() → [assemble → complete → check → execute →
 
 ## 附录 B 配置项速查表
 
-> 来源:`mycoder/config.py` DEFAULT 与 `config/default.yaml`。CLI/API 默认加载内置默认值,要用 YAML 请显式 `--config config/default.yaml`。
+> 来源:`agentmuster/config.py` DEFAULT 与 `config/default.yaml`。CLI/API 默认加载内置默认值,要用 YAML 请显式 `--config config/default.yaml`。
 
 | 配置项(dot-path) | 默认值 | 作用 | 详见 |
 |------|--------|------|------|
@@ -2768,14 +2768,14 @@ TaskInput → Harness.run() → [assemble → complete → check → execute →
 | `context.compressible_age` | `3` | 超过该轮数的历史可折叠 | 第 5 站 |
 | `context.summarizer` | `deterministic` | `deterministic` / `llm` | 第 5 站 |
 | `memory.enabled` | `true` | 结构化记忆总开关 | 第 6 站 |
-| `memory.root` | `.mycoder/memory` | 记忆持久化目录 | 第 6 站 |
+| `memory.root` | `.agentmuster/memory` | 记忆持久化目录 | 第 6 站 |
 | `memory.auto_remember_files` | `true` | 读写文件后自动沉淀摘要 | 第 8 站 |
 | `memory.followup_inject_summaries` | `true` | follow-up 注入父任务摘要 | 第 6 站 |
 | `memory.retrieval.mode` | `substring` | `substring` / `vector` / `hybrid` | 第 6 站 |
 | `memory.retrieval.alpha` | `0.5` | hybrid 向量权重(0~1) | 第 6 站 |
 | `memory.retrieval.embedder` | `hashing` | `hashing` / `fastembed` | 第 6 站 |
 | `checkpoint.enabled` | `true` | 断点总开关 | 第 7 站 |
-| `checkpoint.root` | `.mycoder/checkpoints` | 断点目录 | 第 7 站 |
+| `checkpoint.root` | `.agentmuster/checkpoints` | 断点目录 | 第 7 站 |
 | `checkpoint.interval_steps` | `4` | 每 N 步自动落盘 | 第 7 站 |
 | `checkpoint.on_prune` | `true` | 裁剪前强制落盘 | 第 7 站 |
 | `checkpoint.detect_drift` | `true` | resume 时检测漂移 | 第 7 站 |
@@ -2785,11 +2785,11 @@ TaskInput → Harness.run() → [assemble → complete → check → execute →
 | `safety.shell.allow_commands` | echo/ls/dir/pwd/cat/... | shell 白名单 | 第 4 站 |
 | `safety.shell.deny_patterns` | `rm\s+-rf` 等 | shell 黑名单正则 | 第 4 站 |
 | `safety.allow_write_outside_ext` | `[]` | 额外允许写入的扩展名 | — |
-| `artifacts.root` | `.mycoder/artifacts` | 工件目录 | 第 1 站 |
+| `artifacts.root` | `.agentmuster/artifacts` | 工件目录 | 第 1 站 |
 | `artifacts.redact_artifacts` | `true` | 导出工件时脱敏 | 第 4 站 |
 | `artifacts.sft_log` | `false` | 成功任务导出 SFT 样本 | 第 17 章 |
 | `logging.level` | `INFO` | 日志级别 | — |
-| `logging.file` | `.mycoder/harness.log` | 日志文件 | — |
+| `logging.file` | `.agentmuster/harness.log` | 日志文件 | — |
 | `logging.format` | `text` | `text` / `json`(结构化行) | 第 10 站 |
 | `observability.enabled` | `true` | 导出 trace.json 链路追踪 | 第 10 站 |
 | `agent.orchestrator.enabled` | `false` | 子代理编排开关 | 第 10 站 |
@@ -2799,7 +2799,7 @@ TaskInput → Harness.run() → [assemble → complete → check → execute →
 
 ## 附录 C CLI / API 命令速查
 
-**CLI(`.conda/python.exe -m mycoder ...`)**
+**CLI(`.conda/python.exe -m agentmuster ...`)**
 
 | 命令 | 作用 | 常用参数 |
 |------|------|----------|
@@ -2844,7 +2844,7 @@ TaskInput → Harness.run() → [assemble → complete → check → execute →
 
 - **Q:必须用项目自带的 `.conda` 吗?我自己的 Python 3.11 行不行?**
   A:行。核心运行时唯一强制依赖是 PyYAML,`pip install -e .` 即可;但要跑完整测试/评测/FastAPI,按 `requirements-project.txt` 装,等价于 `conda env create -p .conda -f environment.yml`。
-- **Q:`python -m mycoder` 报 `No module named mycoder`?**
+- **Q:`python -m agentmuster` 报 `No module named agentmuster`?**
   A:你在用别的解释器或不在仓库根目录。用 `.conda/python.exe` 并 `cd` 到仓库根。
 - **Q:Windows 控制台中文乱码?**
   A:`set PYTHONIOENCODING=utf-8`(cmd)或改用 Git Bash / Windows Terminal。
@@ -2864,7 +2864,7 @@ TaskInput → Harness.run() → [assemble → complete → check → execute →
 - **Q:怎么切换到真实模型(Ollama)?**
   A:三种方式:改配置 `model.backend: local_openai`;CLI `--backend local_openai`;监控页「执行后端」选择。前提:Ollama 在线且 `model` 名与 `ollama list` 一致。
 - **Q:`real_baseline` 报告在哪?为什么和 `real` 在同一个目录?**
-  A:`--suite real` 与 `--suite real_baseline` 都写 `.mycoder/real/` 且**互相不清空**,就是为了三臂对照共存(`real_report.json` + `real_baseline_report.json`)。
+  A:`--suite real` 与 `--suite real_baseline` 都写 `.agentmuster/real/` 且**互相不清空**,就是为了三臂对照共存(`real_report.json` + `real_baseline_report.json`)。
 - **Q:`trace.json` 和 `orchestration.json` 分别是谁写的?在哪找?**
   A:`trace.json` 由 Tracer 在 task_end 事件时写到 `{artifacts.root}/{task_id}/trace.json`(机制见第 13 章);`orchestration.json` 由 `Orchestrator._export` 写到 `{artifacts.root}/{orch-xxx}/` 下(见第 12 章)。注意编排任务的子任务目录(`.orch_*/`)里**没有** trace——子 harness 的 observability 被编排器显式关闭。
 - **Q:跑 `orchestrate` 需要真实模型吗?**
@@ -2926,12 +2926,12 @@ TaskInput → Harness.run() → [assemble → complete → check → execute →
 | 15 | 数据类默认值共享导致诡异 bug | dataclass 可变默认值必须 `field(default_factory=...)` | 第 1 站 |
 | 16 | CLI 改配置不生效 | 未传 `--config` | 第 1/10 站 |
 | 17 | 检索想用语义匹配但结果和 substring 一样 | `memory.retrieval.mode` 仍是默认 substring | 第 6 站 |
-| 18 | `.mycoder/` 越来越大 | 工件/记忆/断点持续落盘;评测前 runner 自行重置,平时可手动清理(不入库) | 第 2 章 |
+| 18 | `.agentmuster/` 越来越大 | 工件/记忆/断点持续落盘;评测前 runner 自行重置,平时可手动清理(不入库) | 第 2 章 |
 | 19 | trace.json / orchestration.json 找不到 | 前者查 `{artifacts.root}/{task_id}/`(确认 `observability.enabled`);后者查 `{artifacts.root}/{orch-xxx}/`;编排子任务目录无 trace(被编排器关闭) | 第 12/13 章 |
 | 20 | 编排任务看起来"只跑了一个子任务" | 默认 Planner 是确定性退化分解(整体当一个子任务);注入 LLM planner 才会真正分解 | 第 12 章 |
 
 **调试三板斧**:
-1. **看轨迹**:`.mycoder/artifacts/<task_id>/trajectory.jsonl` 逐行读,每一步的模型输出/工具调用/拦截原因/裁剪策略都在里面;
+1. **看轨迹**:`.agentmuster/artifacts/<task_id>/trajectory.jsonl` 逐行读,每一步的模型输出/工具调用/拦截原因/裁剪策略都在里面;
 2. **看事件**:`trace.json`(层级耗时)+ `--suite` 评测 JSON(逐任务明细);API 场景直接看 SSE 事件流;
 3. **最小复现**:把问题缩到第 5/8/11 站的最小示例上复现,再放大——十站的"动手示例"就是为此准备的模板。
 

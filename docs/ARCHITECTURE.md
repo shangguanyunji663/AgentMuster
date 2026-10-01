@@ -1,4 +1,4 @@
-# MyCoder 架构设计
+# AgentMuster 架构设计
 
 ## 整体架构
 
@@ -53,7 +53,7 @@
   - 安装 `opentelemetry-api` 时自动桥接真实 OTel Tracer(缺失则静默降级)
   - Harness 通过最小侵入的 `on_event` 事件总线埋点:task_start / step_start / model_call / tool_call / step_end / checkpoint / task_end
 - **结构化日志**: `logging.format: text | json`,JSON 行可被 `json.loads` 解析
-- 日志: 关键事件记录到 .mycoder/harness.log
+- 日志: 关键事件记录到 .agentmuster/harness.log
 
 ### 4. 安全边界
 - 参数校验: JSON Schema 验证(类型/必填/枚举/范围)

@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from mycoder.config import Config
-from mycoder.eval import EvalRunner, by_layer, load_benchmarks
+from agentmuster.config import Config
+from agentmuster.eval import EvalRunner, by_layer, load_benchmarks
 
 ROOT = Path(__file__).resolve().parent.parent
 BM_DIR = ROOT / "benchmarks"

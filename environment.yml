@@ -1,4 +1,4 @@
-name: mycoder
+name: agentmuster
 channels:
   - conda-forge
 dependencies:

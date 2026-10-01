@@ -1,5 +1,5 @@
 # ============================================================
-# MyCoder — 本地 Coding Agent Harness 默认配置
+# AgentMuster — 本地 Coding Agent Harness 默认配置
 # 所有端口均绑定 127.0.0.1,不依赖任何云端服务。
 # ============================================================
 
@@ -11,7 +11,7 @@ workspace:
 # --- 模型后端(2 类) ---
 # 默认 mock:评测/测试/演示全离线确定性;走真实 Ollama 的三种方式:
 #   1. 改这里的 backend: local_openai(需重启生效)
-#   2. 运行期临时切换: python -m mycoder run ... --backend local_openai
+#   2. 运行期临时切换: python -m agentmuster run ... --backend local_openai
 #   3. 网页监控页「执行后端」选 Ollama,或用双跑对比按钮
 # 注意:全部 272 项 pytest 与评测 L1-L5 不读此开关,它们显式使用 MockBackend。
 # CLI/API 默认加载内置默认值;要用本文件请显式传 --config config/default.yaml。
@@ -44,14 +44,14 @@ context:
 # --- 结构化记忆 ---
 memory:
   enabled: true
-  root: ".mycoder/memory"       # 记忆持久化目录(任务/文件/关联 三层)
+  root: ".agentmuster/memory"       # 记忆持久化目录(任务/文件/关联 三层)
   auto_remember_files: true     # 读/写文件后自动沉淀文件摘要
   followup_inject_summaries: true  # follow-up 任务自动注入文件摘要(避免重读)
 
 # --- Checkpoint / Resume ---
 checkpoint:
   enabled: true
-  root: ".mycoder/checkpoints"
+  root: ".agentmuster/checkpoints"
   interval_steps: 4             # 每隔 N 步自动落盘
   on_prune: true                # 上下文裁剪前强制落盘
   detect_drift: true            # resume 时检测工作区漂移
@@ -71,14 +71,14 @@ safety:
 
 # --- 运行工件(3 类:轨迹/检查点/指标报告) ---
 artifacts:
-  root: ".mycoder/artifacts"
+  root: ".agentmuster/artifacts"
   redact_artifacts: true        # 导出工件时脱敏
   sft_log: false                # true 时任务成功结束额外产出 sft_samples.jsonl(供 LoRA 微调)
 
 # --- 日志 ---
 logging:
   level: INFO
-  file: ".mycoder/harness.log"
+  file: ".agentmuster/harness.log"
 
 # --- Layer 6 真实模型评测(显式 suite real 才运行) + Layer 6b 裸基线对照 ---
 # Layer 6b(real_baseline):固定模型与任务集,只改"有没有 harness",
@@ -95,7 +95,7 @@ eval:
       model: null
   real_baseline:
     tasks: "benchmarks/real_tasks.json"     # 与 Layer 6 共用同一任务集
-    harness_report: ".mycoder/real/real_report.json"  # harness 参考臂报告位置
+    harness_report: ".agentmuster/real/real_report.json"  # harness 参考臂报告位置
     max_steps: 30                           # 与 harness.max_steps 同预算,保证公平
     max_tool_calls_per_turn: 8
 

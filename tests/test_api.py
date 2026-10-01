@@ -17,8 +17,8 @@ import pytest
 _has_fastapi = importlib.util.find_spec("fastapi") is not None
 pytestmark = pytest.mark.skipif(not _has_fastapi, reason="需要可选依赖 fastapi")
 
-from mycoder.api import create_app  # noqa: E402
-from mycoder.config import Config  # noqa: E402
+from agentmuster.api import create_app  # noqa: E402
+from agentmuster.config import Config  # noqa: E402
 
 
 def _client():
@@ -45,7 +45,7 @@ def test_health_and_trace_page():
         assert c.get("/vue.global.prod.js").status_code == 200
         oa = c.get("/openapi.json")
         assert oa.status_code == 200
-        assert "MyCoder API" in oa.json()["info"]["title"]
+        assert "AgentMuster API" in oa.json()["info"]["title"]
 
 
 def test_run_and_sse_stream():
@@ -115,14 +115,14 @@ def test_run_rejects_unknown_backend():
 
 def test_run_explicit_local_openai_selects_factory(monkeypatch):
     """显式 backend=local_openai 应注入配置副本并经工厂构造(不真连网)。"""
-    from mycoder.models import MockBackend
+    from agentmuster.models import MockBackend
     seen = {}
 
     def fake_create(cfg):
         seen["model_backend"] = cfg.model_backend
         return MockBackend(script=[{"content": "离线完成"}])
 
-    monkeypatch.setattr("mycoder.models.create_backend", fake_create)
+    monkeypatch.setattr("agentmuster.models.create_backend", fake_create)
     with _client() as c:
         r = c.post("/api/run", json={"goal": "走真后端", "backend": "local_openai",
                                      "task_id": "bk-local"})
@@ -141,7 +141,7 @@ def test_run_script_forces_mock_even_with_backend_field(monkeypatch):
     def fake_create(_cfg):  # pragma: no cover - 触发即失败
         raise AssertionError("带 script 时不应经过工厂")
 
-    monkeypatch.setattr("mycoder.models.create_backend", fake_create)
+    monkeypatch.setattr("agentmuster.models.create_backend", fake_create)
     with _client() as c:
         r = c.post("/api/run", json={"goal": "x", "script": _SCRIPT,
                                      "backend": "local_openai", "task_id": "force-mock"})
@@ -153,7 +153,7 @@ def test_run_script_forces_mock_even_with_backend_field(monkeypatch):
 
 def test_compare_submits_two_arms(monkeypatch):
     """/api/compare 应生成同组两臂(mock/local_openai)并共享 compare_group。"""
-    from mycoder.models import MockBackend
+    from agentmuster.models import MockBackend
 
     seen_names = []
 
@@ -161,7 +161,7 @@ def test_compare_submits_two_arms(monkeypatch):
         seen_names.append(cfg.model_backend)
         return MockBackend(script=[{"content": "该臂已离线完成"}])
 
-    monkeypatch.setattr("mycoder.models.create_backend", fake_create)
+    monkeypatch.setattr("agentmuster.models.create_backend", fake_create)
     with _client() as c:
         r = c.post("/api/compare", json={"goal": "同一目标双跑"})
         assert r.status_code == 200

@@ -1,7 +1,7 @@
 # ============================================================
-# MyCoder — Docker 部署配置(docker-compose 里 mycoder 服务使用)
+# AgentMuster — Docker 部署配置(docker-compose 里 agentmuster 服务使用)
 # 与 config/default.yaml 的差异:模型指向 compose 网络内的 ollama 服务,
-# 数据目录全部放在 /app/.mycoder 下以便卷挂载,非交互环境用 allow 审批。
+# 数据目录全部放在 /app/.agentmuster 下以便卷挂载,非交互环境用 allow 审批。
 # ============================================================
 
 model:
@@ -15,19 +15,19 @@ model:
     max_retries: 2
 
 workspace:
-  root: "/app/.mycoder/workspace"
+  root: "/app/.agentmuster/workspace"
 
 memory:
-  root: "/app/.mycoder/memory"
+  root: "/app/.agentmuster/memory"
 
 checkpoint:
-  root: "/app/.mycoder/checkpoints"
+  root: "/app/.agentmuster/checkpoints"
 
 artifacts:
-  root: "/app/.mycoder/artifacts"
+  root: "/app/.agentmuster/artifacts"
 
 logging:
-  file: "/app/.mycoder/harness.log"
+  file: "/app/.agentmuster/harness.log"
 
 # API 服务非交互:无法弹出人工确认,高风险 shell 由白名单+黑名单兜底
 safety:

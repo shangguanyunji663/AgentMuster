@@ -1,6 +1,6 @@
 <div align="center">
 
-# MyCoder
+# AgentMuster
 
 **面向代码仓库长链路任务的本地 Agent 运行底座**
 
@@ -11,7 +11,7 @@
 [![Offline](https://img.shields.io/badge/offline-ready-blueviolet)](#评测体系与实测结果)
 [![Version](https://img.shields.io/badge/version-0.1.0-lightgrey)](CHANGELOG.md)
 
-*上下文会膨胀、文件会反复读、中断就丢状态、跑完说不清发生了什么 —— MyCoder 把这四件事当作工程问题来解决。*
+*上下文会膨胀、文件会反复读、中断就丢状态、跑完说不清发生了什么 —— AgentMuster 把这四件事当作工程问题来解决。*
 
 </div>
 
@@ -19,14 +19,14 @@
 
 ## 它解决什么问题
 
-| 长链路任务的典型故障 | MyCoder 的做法 | 实现位置 |
+| 长链路任务的典型故障 | AgentMuster 的做法 | 实现位置 |
 | --- | --- | --- |
-| 上下文膨胀，长任务中途爆窗 | 软预算触发折叠 + 硬限额强制截断，三层裁剪策略链式降级 | `mycoder/context/` |
-| 同一文件反复读，token 白烧 | 任务 / 文件 / 关联三层结构化记忆，follow-up 自动注入父任务摘要 | `mycoder/memory/` |
-| 中断即重来，进度全丢 | Checkpoint / Resume + 工作区 SHA256 指纹漂移识别 | `mycoder/checkpoint/` |
-| 工具乱跑、路径逃逸、密钥进日志 | Schema 校验 → 路径沙箱 → Shell 黑白名单 → 去重 → HITL 审批 → 脱敏，六道防线 | `mycoder/safety/` |
-| 跑完不知道发生了什么 | 轨迹 / 检查点 / 指标三类运行工件 + 链路追踪 + 可复现评测报告 | `mycoder/artifacts.py`、`mycoder/observability/` |
-| 分不清「系统不行」还是「模型不行」 | 裸模型基线对照：`single_shot` / `naive_loop` / `harness` 三臂同任务集对比 | `mycoder/eval/raw_baseline.py` |
+| 上下文膨胀，长任务中途爆窗 | 软预算触发折叠 + 硬限额强制截断，三层裁剪策略链式降级 | `agentmuster/context/` |
+| 同一文件反复读，token 白烧 | 任务 / 文件 / 关联三层结构化记忆，follow-up 自动注入父任务摘要 | `agentmuster/memory/` |
+| 中断即重来，进度全丢 | Checkpoint / Resume + 工作区 SHA256 指纹漂移识别 | `agentmuster/checkpoint/` |
+| 工具乱跑、路径逃逸、密钥进日志 | Schema 校验 → 路径沙箱 → Shell 黑白名单 → 去重 → HITL 审批 → 脱敏，六道防线 | `agentmuster/safety/` |
+| 跑完不知道发生了什么 | 轨迹 / 检查点 / 指标三类运行工件 + 链路追踪 + 可复现评测报告 | `agentmuster/artifacts.py`、`agentmuster/observability/` |
+| 分不清「系统不行」还是「模型不行」 | 裸模型基线对照：`single_shot` / `naive_loop` / `harness` 三臂同任务集对比 | `agentmuster/eval/raw_baseline.py` |
 
 **设计取向**：核心运行时只依赖 PyYAML；全部增强能力（Web API、向量检索、OTel 桥接）均为可选依赖组，默认关闭或零依赖降级，保证任意新机器上 `pip install -e .` 之后测试与评测**全离线可跑**。
 
@@ -66,10 +66,10 @@ docker compose up -d
 按需安装可选依赖组：
 
 ```bash
-python -m pip install 'mycoder-harness[api]'      # FastAPI + SSE 实时事件流 + 监控页
-python -m pip install 'mycoder-harness[vector]'   # 真实语义向量检索(fastembed / bge-small)
-python -m pip install 'mycoder-harness[otel]'     # OpenTelemetry 桥接
-python -m pip install 'mycoder-harness[dev]'     # ruff + mypy + pytest
+python -m pip install 'agentmuster-harness[api]'      # FastAPI + SSE 实时事件流 + 监控页
+python -m pip install 'agentmuster-harness[vector]'   # 真实语义向量检索(fastembed / bge-small)
+python -m pip install 'agentmuster-harness[otel]'     # OpenTelemetry 桥接
+python -m pip install 'agentmuster-harness[dev]'     # ruff + mypy + pytest
 ```
 
 ### 跑通第一个任务
@@ -91,7 +91,7 @@ python -m pip install 'mycoder-harness[dev]'     # ruff + mypy + pytest
 执行：
 
 ```bash
-python -m mycoder run --task-file demo_task.json --workspace ./workspace
+python -m agentmuster run --task-file demo_task.json --workspace ./workspace
 ```
 
 真实输出（节选）：
@@ -111,14 +111,14 @@ python -m mycoder run --task-file demo_task.json --workspace ./workspace
     "denied_actions": 0
   },
   "final_answer": "已创建 hello.py,任务完成。",
-  "artifacts_dir": ".mycoder\\artifacts\\demo_hello"
+  "artifacts_dir": ".agentmuster\\artifacts\\demo_hello"
 }
 ```
 
-一次运行即在 `.mycoder/` 下沉淀完整工件，可直接复盘：
+一次运行即在 `.agentmuster/` 下沉淀完整工件，可直接复盘：
 
 ```
-.mycoder/
+.agentmuster/
 ├── artifacts/demo_hello/   # trajectory.jsonl(逐步轨迹) + metrics.json + report.md
 ├── checkpoints/            # checkpoint.json(可 resume)
 └── memory/                 # 任务 / 文件 / 关联三层记忆
@@ -130,16 +130,16 @@ python -m mycoder run --task-file demo_task.json --workspace ./workspace
 
 ```bash
 # 前置:本地起好 Ollama,例如 ollama serve && ollama pull qwen3.5:2b
-python -m mycoder run --task-file demo_task.json --config config/default.yaml --backend local_openai
+python -m agentmuster run --task-file demo_task.json --config config/default.yaml --backend local_openai
 
 # 不确定环境是否就绪?先做体检
-python -m mycoder doctor
+python -m agentmuster doctor
 ```
 
 `doctor` 输出示例：
 
 ```
-MyCoder 环境诊断
+AgentMuster 环境诊断
 ========================================
 Python: 3.11.16
   yaml       OK
@@ -153,7 +153,7 @@ API 地址: 127.0.0.1:8910
 ### 启动 Web 监控页
 
 ```bash
-python -m mycoder serve --impl fastapi --config config/default.yaml --port 8910
+python -m agentmuster serve --impl fastapi --config config/default.yaml --port 8910
 ```
 
 浏览器打开 <http://127.0.0.1:8910/>，可在页面上选择执行后端（Mock / Ollama）、一键双跑对照，并通过 SSE 实时观察每一步工具调用。
@@ -162,7 +162,7 @@ python -m mycoder serve --impl fastapi --config config/default.yaml --port 8910
 
 ```bash
 python -m pytest tests/                                        # 272 项测试
-python -m mycoder eval --suite all --output .mycoder/eval      # Layer 1-5 离线评测
+python -m agentmuster eval --suite all --output .agentmuster/eval      # Layer 1-5 离线评测
 python examples/real_model_demo.py                             # Layer 6 真实模型端到端(需 Ollama)
 ```
 
@@ -173,7 +173,7 @@ python examples/real_model_demo.py                             # Layer 6 真实�
 ```mermaid
 flowchart TB
     subgraph IFACE["接口层"]
-        CLI["CLI<br/>python -m mycoder"]
+        CLI["CLI<br/>python -m agentmuster"]
         HTTP["HTTP API<br/>stdlib / FastAPI + SSE"]
         WEB["Vue 3 监控页<br/>零构建 vendored"]
     end
@@ -313,8 +313,8 @@ fold_old_turns  →  drop_stale_turns  →  truncate_long_content
 示例：
 
 ```bash
-python -m mycoder orchestrate --goal "实现用户认证模块,并补齐单元测试" --max-workers 4
-python -m mycoder artifacts --task-id demo_hello
+python -m agentmuster orchestrate --goal "实现用户认证模块,并补齐单元测试" --max-workers 4
+python -m agentmuster artifacts --task-id demo_hello
 ```
 
 ---
@@ -380,8 +380,8 @@ python -m mycoder artifacts --task-id demo_hello
 <summary>展开完整目录树</summary>
 
 ```
-mycoder/
-├── mycoder/                     # 核心代码包
+agentmuster/
+├── agentmuster/                     # 核心代码包
 │   ├── cli.py                   # 命令行入口(run/resume/serve/eval/benchmark/artifacts/doctor/orchestrate)
 │   ├── config.py                # 配置加载与合并
 │   ├── state.py                 # 会话状态模型
@@ -445,7 +445,7 @@ python -m pytest tests/               # 确认基线 272 项全绿
 
 ```bash
 python -m ruff check .                # 行宽 110,规则集见 pyproject.toml
-python -m mypy                        # 覆盖 mycoder 与 tests
+python -m mypy                        # 覆盖 agentmuster 与 tests
 ```
 
 **3. 提交前自检清单**
@@ -499,7 +499,7 @@ Copyright (c) 2026 shangguanyunji663
 <details>
 <summary><b>会误改我仓库里的文件吗？</b></summary>
 
-工具受 `workspace.root` 沙箱约束（默认当前目录，可用 `--workspace` 覆盖），路径逃逸、绝对路径与符号链接会被拦截；`shell_exec` 走白名单并默认需要人工审批（`safety.hitl_policy: prompt`）。运行工件统一写入 `.mycoder/`，建议将其加入 `.gitignore`。
+工具受 `workspace.root` 沙箱约束（默认当前目录，可用 `--workspace` 覆盖），路径逃逸、绝对路径与符号链接会被拦截；`shell_exec` 走白名单并默认需要人工审批（`safety.hitl_policy: prompt`）。运行工件统一写入 `.agentmuster/`，建议将其加入 `.gitignore`。
 
 </details>
 

@@ -14,8 +14,8 @@ import importlib.util
 
 import pytest
 
-from mycoder.memory.store import StructuredMemory
-from mycoder.memory.vectors import (
+from agentmuster.memory.store import StructuredMemory
+from agentmuster.memory.vectors import (
     BM25,
     HashingEmbedder,
     HybridRetriever,
@@ -151,7 +151,7 @@ def test_structured_memory_search_backward_compatible_format():
 
 @pytest.mark.skipif(_HAS_FASTEMBED is False, reason="需要可选依赖 fastembed")
 def test_fastembed_embedder_loads():
-    from mycoder.memory.vectors import FastEmbedEmbedder
+    from agentmuster.memory.vectors import FastEmbedEmbedder
     emb = FastEmbedEmbedder()
     try:
         v = emb.embed("缓存命中率下降时应增加重试")

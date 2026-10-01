@@ -138,7 +138,7 @@
       "goal": "实现 config.py,导出 APP_NAME 与 DEBUG 两个常量。",
       "files_hint": ["config.py"],
       "script": [
-        {"tool_calls": [{"name": "file_write", "arguments": {"path": "config.py", "content": "APP_NAME = 'mycoder'\nDEBUG = True\n"}}]},
+        {"tool_calls": [{"name": "file_write", "arguments": {"path": "config.py", "content": "APP_NAME = 'agentmuster'\nDEBUG = True\n"}}]},
         {"content": "config.py 已实现。"}
       ],
       "expect": {"files_created": ["config.py"]}

@@ -1,7 +1,7 @@
 """结构化记忆测试:三层存储、去重、检索、follow-up 上下文、持久化。"""
 import pytest
 
-from mycoder.memory import StructuredMemory, summarize_file_content
+from agentmuster.memory import StructuredMemory, summarize_file_content
 
 
 @pytest.fixture
@@ -46,7 +46,7 @@ class TestFileLayer:
         assert updated and rec.summary != ""
 
     def test_has_fresh_summary(self, mem):
-        from mycoder.util import sha256_text
+        from agentmuster.util import sha256_text
         mem.remember_file("a.py", content="v1")
         assert mem.has_fresh_summary("a.py", sha256_text("v1"))
         assert not mem.has_fresh_summary("a.py", sha256_text("v2"))

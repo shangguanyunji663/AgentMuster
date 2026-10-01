@@ -12,12 +12,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from mycoder.agent.orchestrator import Orchestrator
-from mycoder.config import Config
+from agentmuster.agent.orchestrator import Orchestrator
+from agentmuster.config import Config
 
 
 def _mock_factory(sub):
-    from mycoder.models import MockBackend
+    from agentmuster.models import MockBackend
     return MockBackend(script=[{"content": f"完成 {sub.id}"}],
                        default_answer=f"完成 {sub.id}")
 
@@ -55,7 +55,7 @@ def test_orchestrate_parallel(tmp_path):
 
 def test_partial_degradation(tmp_path):
     def factory(sub):
-        from mycoder.models import MockBackend
+        from agentmuster.models import MockBackend
         if sub.id == "b":
             raise RuntimeError("子任务B 故意失败")
         return MockBackend(script=[{"content": "ok"}], default_answer="ok")

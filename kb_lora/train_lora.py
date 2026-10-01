@@ -3,7 +3,7 @@
 基座模型
 --------
 用户本地标签为 Ollama 格式 "qwen3.5:2b"(模型名:标签)。注意区分两种 id:
-- Ollama 服务标签(推理用):  qwen3.5:2b   -> MyCoder 的 local_openai.model 填这个
+- Ollama 服务标签(推理用):  qwen3.5:2b   -> AgentMuster 的 local_openai.model 填这个
 - HuggingFace 仓库 id(训练用): Qwen/Qwen3.5-2B-Instruct -> from_pretrained 填这个
 两者指向同一份权重,只是调用入口不同。脚本已把训练用 id 做成 --model-id 参数,
 默认值见下;若你的 HF 仓库名不同,直接 --model-id 覆盖即可。
@@ -23,7 +23,7 @@
   - kb_lora/data/sft_alpaca.jsonl
 也可直接用自己的 (instruction, input, output) / messages 数据。
 
-运行(请在自备 torch 环境执行,不要装进 MyCoder 的零依赖 venv)
+运行(请在自备 torch 环境执行,不要装进 AgentMuster 的零依赖 venv)
 -----------------------------------------------------------
   pip install -r kb_lora/requirements.txt
   python kb_lora/train_lora.py \
@@ -31,7 +31,7 @@
       --output kb_lora/output/qwen3-2b-kb-lora
 
 产出:LoRA 适配器(adapter_*.safetensors + 配置)。训练完用 merge 或
-PEFT 加载,再通过 MyCoder 的 local_openai 后端(localhost)接入验证。
+PEFT 加载,再通过 AgentMuster 的 local_openai 后端(localhost)接入验证。
 """
 from __future__ import annotations
 
@@ -163,7 +163,7 @@ def main():
     trainer.save_model(args.output)
     print(f"[DONE] LoRA 适配器已保存至: {args.output}")
     print("[NEXT] 把适配器合并/挂载到 Ollama 的 qwen3.5:2b 后,在 "
-          "config/default.yaml 设 model.local_openai.model: \"qwen3.5:2b\" 即可接回 MyCoder。")
+          "config/default.yaml 设 model.local_openai.model: \"qwen3.5:2b\" 即可接回 AgentMuster。")
 
 
 if __name__ == "__main__":

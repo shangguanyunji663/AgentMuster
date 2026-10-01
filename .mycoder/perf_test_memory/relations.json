@@ -1,0 +1,8 @@
+{
+  "task_files": {
+    "perf-test": [
+      "examples/giant_test.py"
+    ]
+  },
+  "task_parent": {}
+}

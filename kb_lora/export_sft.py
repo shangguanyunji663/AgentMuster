@@ -1,12 +1,12 @@
-"""MyCoder 轨迹 -> 监督微调(SFT)数据集 导出与清洗。
+"""AgentMuster 轨迹 -> 监督微调(SFT)数据集 导出与清洗。
 
 用途
 ----
-把 MyCoder 运行产出的工件转换为可用于 LoRA/全参微调的训练数据:
+把 AgentMuster 运行产出的工件转换为可用于 LoRA/全参微调的训练数据:
 
-  1. 从 .mycoder/artifacts/**/sft_samples.jsonl 读取 (instruction, output[, context])
+  1. 从 .agentmuster/artifacts/**/sft_samples.jsonl 读取 (instruction, output[, context])
      —— 这是 artifacts.sft_log=true 时由 harness 顺带产出的"干净"样本;
-  2. 从 .mycoder/artifacts/**/trajectory.jsonl 读取 agentic 骨架(可选,用于
+  2. 从 .agentmuster/artifacts/**/trajectory.jsonl 读取 agentic 骨架(可选,用于
      "agent" 模式:保留工具调用轨迹,训练会调用工具的 agent 模型);
   3. 清洗:丢弃未完成任务、去重(按内容哈希)、长度越界过滤、敏感信息脱敏;
   4. 输出两种格式:ChatML(jsonl, 推荐给 TRL)+ Alpaca(jsonl, 兼容旧管线)。
@@ -21,7 +21,7 @@
   python export_sft.py
 
   # 指定工件根目录与输出目录
-  python export_sft.py --artifacts-root .mycoder/artifacts --out kb_lora/data
+  python export_sft.py --artifacts-root .agentmuster/artifacts --out kb_lora/data
 
   # KB 问答模式:把 context 作为系统提示前缀,训练"带检索上下文作答"的模型
   python export_sft.py --mode kb
@@ -226,9 +226,9 @@ def trajectory_to_agent_samples(trajectories: list[list[dict]]) -> list[dict]:
 # --------------------------------------------------------------------------
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(description="MyCoder 轨迹 -> SFT 数据集导出")
-    ap.add_argument("--artifacts-root", default=".mycoder/artifacts",
-                    help="MyCoder 工件根目录(含各 task_id 子目录)")
+    ap = argparse.ArgumentParser(description="AgentMuster 轨迹 -> SFT 数据集导出")
+    ap.add_argument("--artifacts-root", default=".agentmuster/artifacts",
+                    help="AgentMuster 工件根目录(含各 task_id 子目录)")
     ap.add_argument("--out", default="kb_lora/data", help="输出目录")
     ap.add_argument("--mode", choices=["kb", "plain", "agent"], default="kb",
                     help="kb=知识库问答(带上下文);plain=纯指令问答;"

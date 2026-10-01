@@ -1,0 +1,79 @@
+{
+  "api-test-1": {
+    "task_id": "api-test-1",
+    "goal": "审查 src/main.py",
+    "status": "completed",
+    "summary": "已完成审查。",
+    "key_decisions": [],
+    "files": [],
+    "parent_task_id": null,
+    "created_at": "2026-10-02T00:50:19.441",
+    "updated_at": "2026-10-02T00:52:50.191"
+  },
+  "bk-local": {
+    "task_id": "bk-local",
+    "goal": "走真后端",
+    "status": "completed",
+    "summary": "离线完成",
+    "key_decisions": [],
+    "files": [],
+    "parent_task_id": null,
+    "created_at": "2026-10-02T00:50:19.525",
+    "updated_at": "2026-10-02T00:52:50.281"
+  },
+  "force-mock": {
+    "task_id": "force-mock",
+    "goal": "x",
+    "status": "completed",
+    "summary": "已完成审查。",
+    "key_decisions": [],
+    "files": [],
+    "parent_task_id": null,
+    "created_at": "2026-10-02T00:50:20.083",
+    "updated_at": "2026-10-02T00:52:50.850"
+  },
+  "cmp-06e8d1c4-mock": {
+    "task_id": "cmp-06e8d1c4-mock",
+    "goal": "同一目标双跑",
+    "status": "completed",
+    "summary": "任务已完成。",
+    "key_decisions": [],
+    "files": [],
+    "parent_task_id": null,
+    "created_at": "2026-10-02T00:50:20.204",
+    "updated_at": "2026-10-02T00:50:20.204"
+  },
+  "cmp-a9572c9c-mock": {
+    "task_id": "cmp-a9572c9c-mock",
+    "goal": "同一目标双跑",
+    "status": "completed",
+    "summary": "任务已完成。",
+    "key_decisions": [],
+    "files": [],
+    "parent_task_id": null,
+    "created_at": "2026-10-02T00:51:19.887",
+    "updated_at": "2026-10-02T00:51:19.887"
+  },
+  "cmp-ee28e3b7-local_openai": {
+    "task_id": "cmp-ee28e3b7-local_openai",
+    "goal": "同一目标双跑",
+    "status": "completed",
+    "summary": "该臂已离线完成",
+    "key_decisions": [],
+    "files": [],
+    "parent_task_id": null,
+    "created_at": "2026-10-02T00:52:04.899",
+    "updated_at": "2026-10-02T00:52:04.899"
+  },
+  "cmp-8065fc8f-local_openai": {
+    "task_id": "cmp-8065fc8f-local_openai",
+    "goal": "同一目标双跑",
+    "status": "completed",
+    "summary": "该臂已离线完成",
+    "key_decisions": [],
+    "files": [],
+    "parent_task_id": null,
+    "created_at": "2026-10-02T00:52:50.989",
+    "updated_at": "2026-10-02T00:52:50.989"
+  }
+}

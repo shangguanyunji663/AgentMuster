@@ -5,7 +5,7 @@ import os
 
 import pytest
 
-from mycoder.safety import (
+from agentmuster.safety import (
     AllowAllProvider,
     CallbackProvider,
     DenyAllProvider,
@@ -13,8 +13,8 @@ from mycoder.safety import (
     SafetyGuard,
     validate_params,
 )
-from mycoder.tools import build_registry
-from mycoder.tools.sandbox import PathEscapeError
+from agentmuster.tools import build_registry
+from agentmuster.tools.sandbox import PathEscapeError
 
 # Eval Hardening Plan §6:真实路径遍历 payload 样本。URL 编码和 Unicode 变体的
 # 不变量是 fail-closed:guard 拒绝，或者 Workspace.resolve 的最终路径仍留在 root。

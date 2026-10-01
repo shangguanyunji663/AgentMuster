@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import pytest
 
-from mycoder.config import Config
-from mycoder.cost import CostTracker
+from agentmuster.config import Config
+from agentmuster.cost import CostTracker
 
 
 def test_zero_when_no_pricing():

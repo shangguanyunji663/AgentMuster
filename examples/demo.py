@@ -1,6 +1,6 @@
-"""MyCoder Demo — 基础用法演示
+"""AgentMuster Demo — 基础用法演示
 
-This demo shows how to use MyCoder to run a simple coding task.
+This demo shows how to use AgentMuster to run a simple coding task.
 It demonstrates:
 1. Loading configuration
 2. Creating a task input
@@ -14,15 +14,15 @@ from pathlib import Path
 # Add project root to sys.path if running as script
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from mycoder.config import Config
-from mycoder.agent.harness import AgentHarness
-from mycoder.state import TaskInput
-from mycoder.tools import ToolRegistry, Workspace, build_registry
-from mycoder.memory import StructuredMemory as MemoryStore
-from mycoder.checkpoint import CheckpointStore
-from mycoder.safety import SafetyGuard
-from mycoder.artifacts import ArtifactManager
-from mycoder.models import LocalOpenAIBackend  # 使用 Ollama 后端
+from agentmuster.config import Config
+from agentmuster.agent.harness import AgentHarness
+from agentmuster.state import TaskInput
+from agentmuster.tools import ToolRegistry, Workspace, build_registry
+from agentmuster.memory import StructuredMemory as MemoryStore
+from agentmuster.checkpoint import CheckpointStore
+from agentmuster.safety import SafetyGuard
+from agentmuster.artifacts import ArtifactManager
+from agentmuster.models import LocalOpenAIBackend  # 使用 Ollama 后端
 
 
 def demo_basic_task():
@@ -66,10 +66,10 @@ if __name__ == "__main__":
     workspace = Workspace(workspace_path)
     registry = build_registry()
     
-    memory = MemoryStore(workspace_path / ".mycoder" / "memory")
-    checkpoint = CheckpointStore(workspace_path / ".mycoder" / "checkpoints")
+    memory = MemoryStore(workspace_path / ".agentmuster" / "memory")
+    checkpoint = CheckpointStore(workspace_path / ".agentmuster" / "checkpoints")
     guard = SafetyGuard(config, workspace)
-    artifacts = ArtifactManager(workspace_path / ".mycoder" / "artifacts", config)
+    artifacts = ArtifactManager(workspace_path / ".agentmuster" / "artifacts", config)
     
     # 5. Create and run harness
     harness = AgentHarness(
@@ -144,10 +144,10 @@ def demo_checkpoint_resume():
     workspace = Workspace(workspace_path)
     registry = build_registry()
     
-    memory = MemoryStore(workspace_path / ".mycoder" / "memory")
-    checkpoint = CheckpointStore(workspace_path / ".mycoder" / "checkpoints")
+    memory = MemoryStore(workspace_path / ".agentmuster" / "memory")
+    checkpoint = CheckpointStore(workspace_path / ".agentmuster" / "checkpoints")
     guard = SafetyGuard(config, workspace)
-    artifacts = ArtifactManager(workspace_path / ".mycoder" / "artifacts", config)
+    artifacts = ArtifactManager(workspace_path / ".agentmuster" / "artifacts", config)
     
     # 3. Phase 1: Run until interrupted
     print("\nPhase 1: Running initial task (will be interrupted)...")
@@ -230,7 +230,7 @@ print(f"4 * 5 = {result}")
 """)
     
     # 3. Initialize memory
-    memory = MemoryStore(workspace_path / ".mycoder" / "memory")
+    memory = MemoryStore(workspace_path / ".agentmuster" / "memory")
     
     # 4. Simulate file reads and memory storage
     print("\nSimulating file operations...")
@@ -270,7 +270,7 @@ def demo_context_management():
     print("Demo 4: Context Management & Budget Trimming")
     print("=" * 60)
     
-    from mycoder.context import ContextManager
+    from agentmuster.context import ContextManager
     
     # 1. Create context manager with budget
     config = Config()
@@ -282,7 +282,7 @@ def demo_context_management():
     # 2. Add messages that exceed budget
     print("\nAdding messages to context...")
     
-    from mycoder.context.manager import Message
+    from agentmuster.context.manager import Message
     
     for i in range(10):
         assistant_msg = Message("assistant", f"Step {i}: " + "x" * 200)
@@ -323,7 +323,7 @@ def demo_safety_features():
     # 2. Test path escape prevention
     print("\nTesting path escape prevention...")
     
-    from mycoder.tools.sandbox import PathEscapeError
+    from agentmuster.tools.sandbox import PathEscapeError
     
     try:
         workspace.resolve("../etc/passwd")
@@ -334,8 +334,8 @@ def demo_safety_features():
     # 3. Test parameter validation
     print("\nTesting parameter validation...")
     
-    from mycoder.tools.base import Tool, ToolResult
-    from mycoder.safety import validate_params
+    from agentmuster.tools.base import Tool, ToolResult
+    from agentmuster.safety import validate_params
     
     class MockTool(Tool):
         name = "mock_tool"
@@ -363,7 +363,7 @@ def demo_safety_features():
     # 4. Test dedup via SafetyGuard.check()
     print("\nTesting dedup detection...")
     
-    from mycoder.tools.base import ToolContext
+    from agentmuster.tools.base import ToolContext
     
     read_tool = type("ReadTool", (Tool,), {
         "name": "file_read",
@@ -384,7 +384,7 @@ def demo_safety_features():
     # 5. Test redaction
     print("\nTesting sensitive data redaction...")
     
-    from mycoder.safety import Redactor
+    from agentmuster.safety import Redactor
     
     redactor = Redactor(enabled=True)
     sensitive_text = "API key: sk-1234567890abcdef\nPassword: secret123"
@@ -404,7 +404,7 @@ def demo_safety_features():
 def main():
     """Run all demos"""
     print("\n" + "=" * 60)
-    print("MyCoder Demo Suite")
+    print("AgentMuster Demo Suite")
     print("=" * 60 + "\n")
     
     demos = [

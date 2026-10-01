@@ -22,7 +22,7 @@
 
 ### 1.1 自证闭环机制
 
-所有 Layer 1–4 任务由 `benchmarks/tasks.json` 的 `script` 字段驱动，`script` 内含精确的 `tool_calls`（含参数）。`MockBackend`（`mycoder/models/__init__.py`）仅按脚本回放，不产生任何决策。评测因此度量的是"系统能否走通预设轨迹"，而非"系统能否在真实压力下保持正确"。
+所有 Layer 1–4 任务由 `benchmarks/tasks.json` 的 `script` 字段驱动，`script` 内含精确的 `tool_calls`（含参数）。`MockBackend`（`agentmuster/models/__init__.py`）仅按脚本回放，不产生任何决策。评测因此度量的是"系统能否走通预设轨迹"，而非"系统能否在真实压力下保持正确"。
 
 ```
 预设 script(含正确 tool_calls+参数)
@@ -54,7 +54,7 @@ ok == 1.0  ──────────────── 自证闭环(数据�
 
 **证据**：
 - `benchmarks/tasks.json` t01–t04：`script` 内 `file_write`/`file_read`/`file_edit`/`grep_search` 均含正确参数。
-- `mycoder/eval/runner.py:156-159`：`final_contains` 仅检查终答子串。
+- `agentmuster/eval/runner.py:156-159`：`final_contains` 仅检查终答子串。
 - `tests/test_eval.py:27-30`：硬编码 `regression==4`。
 
 **缺失**：
@@ -67,7 +67,7 @@ ok == 1.0  ──────────────── 自证闭环(数据�
 **现状**：`baseline(budget=10_000_000, keep_turns=1000)` 不治理 vs `governed(budget=1500)` 强制裁剪，~80% 压缩率本质是"开启裁剪后 token 变少"，是**机制生效证据**而非**治理质量**。`compliance=100%` 因 `hard_limit=2250` 远大于治理后实际占用。
 
 **证据**：
-- `mycoder/eval/runner.py:193` `budget = 1500`；`:198` baseline `budget=10_000_000, keep_turns=1000`。
+- `agentmuster/eval/runner.py:193` `budget = 1500`；`:198` baseline `budget=10_000_000, keep_turns=1000`。
 - `:201` `ratio = 1 - gov_total/base_total`。
 - `:224` `compliance_all = min(...)`，治理后远低于 2250 故恒 100%。
 - `:230` `ok = bool(ratios) and compliance_all >= 1.0`。
@@ -84,7 +84,7 @@ ok == 1.0  ──────────────── 自证闭环(数据�
 
 **证据**：
 - `benchmarks/tasks.json` t09：`script` 含 `memory_query`，`control_script` 含 `file_read`（:121-130）。
-- `mycoder/eval/runner.py:247-249`：`script_field="script"` vs `"control_script"` 分别跑，`_count_reads` 比对。
+- `agentmuster/eval/runner.py:247-249`：`script_field="script"` vs `"control_script"` 分别跑，`_count_reads` 比对。
 - `:260` `re_read_reduced_to_zero = (re_read_with == 0)` —— 但 `re_read_with` 由 script 决定，非系统决策。
 - `tests/test_eval.py:36-43`：硬编码 `parents==2, children==2`。
 
@@ -99,10 +99,10 @@ ok == 1.0  ──────────────── 自证闭环(数据�
 **现状**：10 场景全用同一 `t12_resume_scenario`，仅 `stop_after=k` 不同。漂移检测是精确哈希比对（`drift.py:44-51 compare`），`_mutate_workspace`（改 step1 内容、加 external.txt、删 step2）必然触发 modified/added/deleted —— **已知突变 vs 已知检测**的套圈。恢复完成率看 `step4.txt` 存在，而 step4 由 resume 续跑同 script 必然生成。
 
 **证据**：
-- `mycoder/eval/runner.py:276-281`：`for k in (1,2,3,4,5): for want_drift in (False,True)`。
+- `agentmuster/eval/runner.py:276-281`：`for k in (1,2,3,4,5): for want_drift in (False,True)`。
 - `:283` `self._mutate_workspace(wd, k)`。
 - `:293-296` `completed = status=="completed" and step4.exists() and "构建完成" in final_answer`。
-- `mycoder/checkpoint/drift.py:44-51`：纯集合差 + 哈希比对。
+- `agentmuster/checkpoint/drift.py:44-51`：纯集合差 + 哈希比对。
 
 **缺失**：
 - 语义不变内容变（仅空白/格式化）→ 现检测会误报漂移，需明确这是设计取舍并测之。
@@ -116,9 +116,9 @@ ok == 1.0  ──────────────── 自证闭环(数据�
 
 **证据**：
 - `benchmarks/retrieval.json`：3 任务 × 2 query = 6，corpus 4–5 条。
-- `mycoder/eval/runner.py:346` `if row["hybrid@3"] > row["substring@3"]: hybrid_wins += 1`。
+- `agentmuster/eval/runner.py:346` `if row["hybrid@3"] > row["substring@3"]: hybrid_wins += 1`。
 - `:359-360` `ok = hybrid_wins == total_q and ...`。
-- `mycoder/memory/store.py:236-240` substring：`query.lower() in d["text"].lower()`。
+- `agentmuster/memory/store.py:236-240` substring：`query.lower() in d["text"].lower()`。
 
 **缺失**：
 - 精确匹配用例：query 含原文子串 → substring 应命中（现全 0 是因没这类用例，不反映 substring 真能工作）。
@@ -134,7 +134,7 @@ ok == 1.0  ──────────────── 自证闭环(数据�
 **证据**：
 - `tests/test_safety.py:53-61`：4 条路径逃逸用例。
 - `tests/test_safety.py:28-36`：7 条参数校验用例。
-- `mycoder/tools/sandbox.py:30-47`：`resolve()` 拒绝对路径、`commonpath` 断言。
+- `agentmuster/tools/sandbox.py:30-47`：`resolve()` 拒绝对路径、`commonpath` 断言。
 
 **缺失**：真实 OWASP 路径遍历 payload 库、编码绕过、符号链接、Windows UNC、空字节、超长路径、shell 注入变体、redactor 绕过。详见 §6 附录。
 
@@ -240,10 +240,10 @@ def gen_memory_pairs(seed: int = 0) -> list[dict]:
 | `benchmarks/generators.py` | 新增：参数化数据生成器 | P0 |
 | `benchmarks/tasks.json` | 扩充至每层 15–20，加负例/边界 | P0/P1 |
 | `benchmarks/retrieval.json` | 30+ query，4 类，corpus 20–50 | P0/P1 |
-| `mycoder/eval/runner.py` | `_check_expect` 支持 `should_fail`/`file_unchanged_except`/`probe_contains`；Layer-2 加 retention；Layer-3 加 stale/wrong/missing；Layer-4 加多任务+内容正确性；Layer-5 按类型判定+MRR | P1 |
+| `agentmuster/eval/runner.py` | `_check_expect` 支持 `should_fail`/`file_unchanged_except`/`probe_contains`；Layer-2 加 retention；Layer-3 加 stale/wrong/missing；Layer-4 加多任务+内容正确性；Layer-5 按类型判定+MRR | P1 |
 | `tests/test_eval.py` | 解耦 `len==12`/`4/4` 等硬编码为 `>=` 或动态 | P0 |
 | `tests/test_safety.py` | 参数化注入 OWASP payload 库（§6） | P1 |
-| `mycoder/eval/runner.py` | 双轨 + 可区分度 + 历史对比 | P2 |
+| `agentmuster/eval/runner.py` | 双轨 + 可区分度 + 历史对比 | P2 |
 
 ---
 

@@ -1,4 +1,4 @@
-"""Performance test using giant_test.py to stress-test MyCoder components"""
+"""Performance test using giant_test.py to stress-test AgentMuster components"""
 import statistics
 import sys
 import time
@@ -8,12 +8,12 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from mycoder.checkpoint import CheckpointStore  # noqa: E402
-from mycoder.config import Config  # noqa: E402
-from mycoder.context import ContextManager, estimate_messages, estimate_tokens  # noqa: E402
-from mycoder.memory import StructuredMemory  # noqa: E402
-from mycoder.state import Message  # noqa: E402
-from mycoder.tools import ToolContext, Workspace, build_registry  # noqa: E402
+from agentmuster.checkpoint import CheckpointStore  # noqa: E402
+from agentmuster.config import Config  # noqa: E402
+from agentmuster.context import ContextManager, estimate_messages, estimate_tokens  # noqa: E402
+from agentmuster.memory import StructuredMemory  # noqa: E402
+from agentmuster.state import Message  # noqa: E402
+from agentmuster.tools import ToolContext, Workspace, build_registry  # noqa: E402
 
 GIGANTIC_FILE = "examples/giant_test.py"
 RESULTS: dict[str, dict[str, float]] = {}  # 显式注解:CI mypy job 仅装 mypy+pyyaml,无法推断空字典
@@ -94,7 +94,7 @@ def test_memory_performance():
     print("\n[4] Memory Store Performance")
     print("-" * 40)
 
-    mem_dir = Path(".mycoder/perf_test_memory")
+    mem_dir = Path(".agentmuster/perf_test_memory")
     if mem_dir.exists():
         import shutil
         shutil.rmtree(mem_dir)
@@ -168,7 +168,7 @@ def test_checkpoint_performance():
     print("\n[6] Checkpoint Performance")
     print("-" * 40)
 
-    cp_dir = Path(".mycoder/perf_test_checkpoints")
+    cp_dir = Path(".agentmuster/perf_test_checkpoints")
     if cp_dir.exists():
         import shutil
         shutil.rmtree(cp_dir)
@@ -201,7 +201,7 @@ def test_workspace_operations():
     print("\n[7] Workspace Operations Performance")
     print("-" * 40)
 
-    ws_dir = Path(".mycoder/perf_test_workspace")
+    ws_dir = Path(".agentmuster/perf_test_workspace")
     if ws_dir.exists():
         import shutil
         shutil.rmtree(ws_dir)
@@ -274,7 +274,7 @@ def print_summary():
 
 def main():
     print("=" * 60)
-    print("MyCoder Performance Test Suite")
+    print("AgentMuster Performance Test Suite")
     print(f"Test file: {GIGANTIC_FILE}")
 
     # Check if test file exists
@@ -306,8 +306,8 @@ def main():
     print(f"\nTotal execution time: {elapsed_total:.2f}s")
 
     # Cleanup
-    for d in [".mycoder/perf_test_memory", ".mycoder/perf_test_checkpoints",
-              ".mycoder/perf_test_workspace"]:
+    for d in [".agentmuster/perf_test_memory", ".agentmuster/perf_test_checkpoints",
+              ".agentmuster/perf_test_workspace"]:
         p = Path(d)
         if p.exists():
             import shutil

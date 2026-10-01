@@ -1,4 +1,4 @@
-# 企业知识库 LoRA 微调依赖(请在与 MyCoder 零依赖 venv 隔离的环境安装)
+# 企业知识库 LoRA 微调依赖(请在与 AgentMuster 零依赖 venv 隔离的环境安装)
 # 推荐新建独立 venv:  python -m venv venv && venv\Scripts\activate && pip install -r requirements.txt
 
 # ---- 核心训练栈 ----

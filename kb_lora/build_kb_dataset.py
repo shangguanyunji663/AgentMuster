@@ -3,24 +3,24 @@
 为什么需要它
 ------------
 "企业知识库 LoRA" 的训练数据本质是大量 (问题, 检索资料, 答案) 三元组。
-MyCoder 的轨迹本身不含检索上下文,因此这里单独提供"造数据"环节:
+AgentMuster 的轨迹本身不含检索上下文,因此这里单独提供"造数据"环节:
 
   1. 读取企业文档(md/txt/json),按段落/标题切块;
   2. 为每个块生成若干"基于该块"的问题与答案;
-  3. 输出 MyCoder 可直接消费、再由 export_sft.py 清洗的格式
+  3. 输出 AgentMuster 可直接消费、再由 export_sft.py 清洗的格式
      (sft_samples.jsonl 同构:instruction=问题, output=答案, context=资料块)。
 
 生成方式(两种,可切换)
 ----------------------
 - offline(默认):用模板从每个块抽取"要点式"问答,**无需 GPU / 无需模型**,
   立刻能跑,适合冷启动积累首批数据。
-- teacher:调用本地 OpenAI 兼容服务(与 MyCoder 的 local_openai 同构)让
+- teacher:调用本地 OpenAI 兼容服务(与 AgentMuster 的 local_openai 同构)让
   更强模型出题,质量更高。需要你先起一个推理服务(如 Ollama / vLLM)。
 
 用法
 ----
-  # 离线模板,处理 docs/ 下所有 .md/.txt,写出到 .mycoder/artifacts/_kb/sft_samples.jsonl
-  python build_kb_dataset.py --docs ./kb_docs --out .mycoder/artifacts/_kb/sft_samples.jsonl
+  # 离线模板,处理 docs/ 下所有 .md/.txt,写出到 .agentmuster/artifacts/_kb/sft_samples.jsonl
+  python build_kb_dataset.py --docs ./kb_docs --out .agentmuster/artifacts/_kb/sft_samples.jsonl
 
   # 用本地教师模型出题(需先起服务)
   python build_kb_dataset.py --docs ./kb_docs --mode teacher \

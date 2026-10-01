@@ -1,4 +1,4 @@
-# MyCoder 测试方法
+# AgentMuster 测试方法
 
 ## 运行环境(重要)
 
@@ -6,7 +6,7 @@
 
 ```bash
 # 方式一:激活内置环境后使用 python
-conda activate D:\PythonProject\mycoder\.conda
+conda activate D:\PythonProject\agentmuster\.conda
 python -m pytest tests/
 
 # 方式二:不激活,直接用项目内解释器
@@ -18,7 +18,7 @@ python -m pytest tests/
 
 ## 测试架构
 
-MyCoder 采用**分层评测体系**(Layer 1-7,含 Layer 6b,见下) + **性能测试套件**，刻意区分"模型能力"与"系统能力"：
+AgentMuster 采用**分层评测体系**(Layer 1-7,含 Layer 6b,见下) + **性能测试套件**，刻意区分"模型能力"与"系统能力"：
 
 ```
 Layer 1: Harness 回归测试    ─── 验证运行稳定性(能完成、工件齐全、断言满足)
@@ -89,7 +89,7 @@ python -m pytest tests/test_eval.py::TestEvalLayers::test_regression_layer -v
 python -m pytest tests/test_performance.py -v
 
 # 带覆盖率(pytest-cov 已预装)
-python -m pytest tests/ --cov=mycoder --cov-report=term
+python -m pytest tests/ --cov=agentmuster --cov-report=term
 ```
 
 ## Layer 1-5 评测详解
@@ -190,8 +190,8 @@ python -m pytest tests/test_harness.py::TestResumeFlow -v
 运行方式(CLI suite,非 pytest):
 
 ```bash
-python -m mycoder eval --suite retrieval --output .mycoder/eval
-cat .mycoder/eval/report.md
+python -m agentmuster eval --suite retrieval --output .agentmuster/eval
+cat .agentmuster/eval/report.md
 ```
 
 关键结论: 同义改写查询上 substring recall@3 = 0% 而 hybrid = 100%,实证语义检索价值。
@@ -200,7 +200,7 @@ cat .mycoder/eval/report.md
 
 ### 概述
 
-`tests/test_performance.py` 使用 `examples/giant_test.py` (~4669 行) 对 MyCoder 各组件进行压力测试。每项测试进行 3 轮取平均，输出 avg/min/max 耗时。
+`tests/test_performance.py` 使用 `examples/giant_test.py` (~4669 行) 对 AgentMuster 各组件进行压力测试。每项测试进行 3 轮取平均，输出 avg/min/max 耗时。
 
 ### 性能测试模块详解
 
@@ -266,14 +266,14 @@ python examples/context_demo.py
 运行完整评测后生成报告：
 
 ```bash
-python -m mycoder eval --suite all --output .mycoder/eval
+python -m agentmuster eval --suite all --output .agentmuster/eval
 # 单独运行某一层: regression | context | memory | resume | retrieval
-python -m mycoder eval --suite retrieval
+python -m agentmuster eval --suite retrieval
 ```
 
 报告文件：
-- `.mycoder/eval/report.json`: 结构化报告(JSON)
-- `.mycoder/eval/report.md`: 人类可读报告(Markdown)
+- `.agentmuster/eval/report.json`: 结构化报告(JSON)
+- `.agentmuster/eval/report.md`: 人类可读报告(Markdown)
 
 ## 测试覆盖率
 ### 模块覆盖
@@ -333,7 +333,7 @@ python -m mycoder eval --suite retrieval
 
 ### pytest 找不到测试
 ```bash
-# 确保在 mycoder 项目根目录(即 pyproject.toml 所在目录)执行,
+# 确保在 agentmuster 项目根目录(即 pyproject.toml 所在目录)执行,
 # 并确认使用的是项目内置解释器:
 .conda/python.exe -m pytest tests/ --collect-only    # 应列出 272 项
 ```
@@ -344,7 +344,7 @@ python -m mycoder eval --suite retrieval
 ls tests/conftest.py
 
 # 确保项目根目录在 sys.path
-.conda/python.exe -c "import sys; sys.path.insert(0, '.'); import mycoder"
+.conda/python.exe -c "import sys; sys.path.insert(0, '.'); import agentmuster"
 
 # 若提示缺少依赖,说明没走内置环境,按文首方式激活 .conda 或重建环境
 ```
@@ -364,7 +364,7 @@ python -m pytest tests/test_performance.py -v -s
 python -m pytest tests/test_eval.py -v -s
 
 # 查看评测报告
-cat .mycoder/eval/report.md
+cat .agentmuster/eval/report.md
 ```
 
 ## 质量门(本地执行)
@@ -372,9 +372,9 @@ cat .mycoder/eval/report.md
 项目当前不依赖远端 CI;质量门由以下本地命令构成(全部基于项目内置 `.conda` 环境),提交前建议跑一遍:
 
 ```bash
-conda activate D:\PythonProject\mycoder\.conda
+conda activate D:\PythonProject\agentmuster\.conda
 ruff check .                                   # 静态 lint
 mypy                                           # 类型检查
-python -m pytest tests/ --cov=mycoder --cov-report=term   # 全量测试 + 覆盖率
-python -m mycoder eval --suite all --output .mycoder/eval-ci  # 离线评测冒烟
+python -m pytest tests/ --cov=agentmuster --cov-report=term   # 全量测试 + 覆盖率
+python -m agentmuster eval --suite all --output .agentmuster/eval-ci  # 离线评测冒烟
 ```

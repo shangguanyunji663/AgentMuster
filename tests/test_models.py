@@ -1,8 +1,8 @@
 """模型后端测试:mock 脚本化语义、状态恢复、工厂装配、OpenAI 兼容解析。"""
 import pytest
 
-from mycoder.models import LocalOpenAIBackend, MockBackend, ModelResponse, create_backend, tools_to_openai
-from mycoder.state import Message
+from agentmuster.models import LocalOpenAIBackend, MockBackend, ModelResponse, create_backend, tools_to_openai
+from agentmuster.state import Message
 
 
 class TestMockBackend:
@@ -91,7 +91,7 @@ class TestLocalOpenAI:
 
 class TestSchemas:
     def test_tools_to_openai(self):
-        from mycoder.tools import build_registry
+        from agentmuster.tools import build_registry
         schemas = tools_to_openai(build_registry().all())
         assert len(schemas) == 7
         assert all(s["type"] == "function" for s in schemas)

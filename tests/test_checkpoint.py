@@ -1,7 +1,7 @@
 """断点存储与工作区漂移识别测试。"""
 import pytest
 
-from mycoder.checkpoint import CheckpointStore, DriftReport, WorkspaceDriftDetector
+from agentmuster.checkpoint import CheckpointStore, DriftReport, WorkspaceDriftDetector
 
 
 @pytest.fixture

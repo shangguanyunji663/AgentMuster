@@ -1,13 +1,13 @@
 """上下文治理测试:token 估算、折叠、硬限额强制、拷贝安全。"""
-from mycoder.context import (
+from agentmuster.context import (
     ContextManager,
     DeterministicSummarizer,
     NoopSummarizer,
     estimate_messages,
     estimate_tokens,
 )
-from mycoder.state import Message
-from mycoder.util import truncate
+from agentmuster.state import Message
+from agentmuster.util import truncate
 
 
 class TestTokens:
@@ -128,14 +128,14 @@ class TestSummarizer:
 
 class TestLLMSummarizer:
     def test_without_backend_falls_back_to_deterministic(self):
-        from mycoder.context import LLMSummarizer
+        from agentmuster.context import LLMSummarizer
         s = LLMSummarizer(backend=None)
         out = s.summarize_turn(1, "结论", [("file_read", "内容")])
         assert "[步骤 1]" in out
 
     def test_uses_backend_content(self):
-        from mycoder.context import LLMSummarizer
-        from mycoder.models import MockBackend
+        from agentmuster.context import LLMSummarizer
+        from agentmuster.models import MockBackend
         # 无脚本、固定 default_answer => 每次摘要都返回同一文本
         backend = MockBackend(script=[], default_answer="模型摘要:完成")
         s = LLMSummarizer(backend=backend)
@@ -143,7 +143,7 @@ class TestLLMSummarizer:
         assert "模型摘要" in out
 
     def test_backend_failure_falls_back(self):
-        from mycoder.context import LLMSummarizer
+        from agentmuster.context import LLMSummarizer
 
         class _Broken:
             def complete(self, *a, **k):
@@ -154,8 +154,8 @@ class TestLLMSummarizer:
         assert "[步骤 1]" in out
 
     def test_empty_backend_content_falls_back(self):
-        from mycoder.context import LLMSummarizer
-        from mycoder.models import MockBackend
+        from agentmuster.context import LLMSummarizer
+        from agentmuster.models import MockBackend
         backend = MockBackend(script=[], default_answer="   ")
         s = LLMSummarizer(backend=backend)
         out = s.summarize_turn(1, "结论", [("file_read", "内容")])

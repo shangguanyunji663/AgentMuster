@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from mycoder.config import Config  # noqa: E402
+from agentmuster.config import Config  # noqa: E402
 
 # Override pytest's tmp_path to use local directory (avoids Windows permission issues)
 _tmp_base = ROOT / ".pytest_tmp"
@@ -86,22 +86,22 @@ def config() -> Config:
 
 @pytest.fixture
 def workspace(tmp_path):
-    from mycoder.tools import Workspace
+    from agentmuster.tools import Workspace
     return Workspace(tmp_path / "ws")
 
 
 @pytest.fixture
 def memory(tmp_path):
-    from mycoder.memory import StructuredMemory
+    from agentmuster.memory import StructuredMemory
     return StructuredMemory(tmp_path / "memory", enabled=True)
 
 
 @pytest.fixture
 def make_harness(tmp_path, config):
     """构建隔离的 harness 工厂:所有产物都落在 tmp_path 内,互不污染。"""
-    from mycoder.agent import AgentHarness
-    from mycoder.models import MockBackend
-    from mycoder.safety import AllowAllProvider
+    from agentmuster.agent import AgentHarness
+    from agentmuster.models import MockBackend
+    from agentmuster.safety import AllowAllProvider
 
     def _make(script=None, approver=None, memory_enabled=True, **cfg_overrides):
         cfg = Config(config.to_dict())

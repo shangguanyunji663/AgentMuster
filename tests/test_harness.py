@@ -1,8 +1,8 @@
 """Harness 主循环端到端测试:完成/工件/安全拦截/去重/记忆/恢复。"""
 import pytest
 
-from mycoder.safety import DenyAllProvider
-from mycoder.state import TaskInput
+from agentmuster.safety import DenyAllProvider
+from agentmuster.state import TaskInput
 
 WRITE_SCRIPT = [
     {"tool_calls": [{"name": "file_write",
@@ -115,7 +115,7 @@ class TestDedupInHarness:
 
 class TestMemoryInHarness:
     def test_followup_injects_memory(self, make_harness):
-        from mycoder.state import TaskInput as TI
+        from agentmuster.state import TaskInput as TI
         parent = TI(task_id="parent", goal="建 utils.py", files_hint=["utils.py"])
         child = TI(task_id="child", goal="用 utils", files_hint=["utils.py"],
                    follow_up_of="parent")

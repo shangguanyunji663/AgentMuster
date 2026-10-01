@@ -1,9 +1,9 @@
 """Layer 6b 裸基线评测的离线用例:用 MockBackend 精确控制两条基线臂的行为。"""
 import json
 
-from mycoder.config import Config
-from mycoder.eval.raw_baseline import RawBaselineRunner, _parse_block_path
-from mycoder.models import MockBackend
+from agentmuster.config import Config
+from agentmuster.eval.raw_baseline import RawBaselineRunner, _parse_block_path
+from agentmuster.models import MockBackend
 
 
 def _write_tasks(tmp_path):
@@ -77,7 +77,7 @@ def test_naive_loop_tool_schemas_exclude_shell_and_memory(tmp_path):
             captured.append([t["name"] for t in (tools or [])])
             return original(messages, tools, temperature)
 
-        backend.complete = complete
+        backend.complete = complete  # type: ignore[method-assign]
         return backend
 
     runner = RawBaselineRunner(Config(), output_dir=tmp_path / "out",
@@ -120,7 +120,7 @@ def test_baseline_skips_default_mock(tmp_path):
 def test_real_baseline_suite_does_not_wipe_output_dir(tmp_path):
     """run_suite 对 real/real_baseline 不做整体 _reset:同一目录先跑 Layer 6
     再跑 6b 时,先跑的报告(real_report.json)必须保留,三臂对照依赖它。"""
-    from mycoder.eval.runner import EvalRunner
+    from agentmuster.eval.runner import EvalRunner
 
     out = tmp_path / "out"
     out.mkdir()

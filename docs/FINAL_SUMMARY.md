@@ -1,8 +1,8 @@
-# MyCoder — 本地 Coding Agent Harness 项目交付总结
+# AgentMuster — 本地 Coding Agent Harness 项目交付总结
 
 ## 项目概述
 
-**项目名称**: MyCoder - 本地 Coding Agent Harness  
+**项目名称**: AgentMuster - 本地 Coding Agent Harness  
 **开发语言**: Python 3.10+(项目内置环境为 Python 3.11)  
 **运行环境**: 项目内置 Conda 独立环境 `.conda/`(仓库根目录下,由 Anaconda 管理;重建命令 `conda env create -p .conda -f environment.yml`)  
 **测试环境**: pytest 8.x, Windows  
@@ -13,7 +13,7 @@
 ## 一、项目目录结构
 
 ```
-mycoder/                          # 项目根目录
+agentmuster/                          # 项目根目录
 ├── README.md                     # 项目说明文档
 ├── CHANGELOG.md                  # 变更日志(与 conventional commits 对应)
 ├── LICENSE                       # MIT
@@ -34,9 +34,9 @@ mycoder/                          # 项目根目录
 │   ├── retrieval.json            # 核心检索召回数据(38 条查询)
 │   ├── retrieval_extra.json      # 扩展 4 领域 44 条查询(合计 82 条)
 │   └── real_tasks.json           # Layer 6 真实编码任务(4 个)
-├── mycoder/                      # 核心代码包 (~35 Python 文件)
+├── agentmuster/                      # 核心代码包 (~35 Python 文件)
 │   ├── __init__.py               # 包初始化
-│   ├── __main__.py               # python -m mycoder 入口
+│   ├── __main__.py               # python -m agentmuster 入口
 │   ├── cli.py                    # CLI 命令行接口 (run/resume/serve/orchestrate/eval/benchmark/artifacts/doctor)
 │   ├── config.py                 # Config 配置加载器 (支持 YAML/JSON, 深合并)
 │   ├── state.py                  # 会话状态模型 (Message, ToolCall, Step, TaskInput, RunResult)
@@ -431,7 +431,7 @@ Layer 5: 检索召回评测
 
 ## 三、新增：性能测试套件 (test_performance.py)
 
-`tests/test_performance.py` 使用 `examples/giant_test.py` (~4669 行) 对 MyCoder 各组件进行压力测试。
+`tests/test_performance.py` 使用 `examples/giant_test.py` (~4669 行) 对 AgentMuster 各组件进行压力测试。
 
 ### 巨型测试文件
 
@@ -501,7 +501,7 @@ python generate_test_file.py
 ### 运行测试
 
 ```bash
-# 使用项目内置 Conda 环境(先激活: conda activate D:\PythonProject\mycoder\.conda)
+# 使用项目内置 Conda 环境(先激活: conda activate D:\PythonProject\agentmuster\.conda)
 
 # 运行完整测试套件 (272 项)
 .conda/python.exe -m pytest tests/ -v
@@ -510,7 +510,7 @@ python generate_test_file.py
 .conda/python.exe -m pytest tests/test_performance.py -v -s
 
 # 运行五层评测 (benchmark suite)
-.conda/python.exe -m mycoder eval --suite all --output .mycoder/eval
+.conda/python.exe -m agentmuster eval --suite all --output .agentmuster/eval
 ```
 
 ### 测试用例统计
