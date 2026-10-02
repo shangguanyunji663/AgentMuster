@@ -25,6 +25,7 @@ model:
     model: "qwen3.5:2b"                     # 必须与本地服务已注册的名字一致(ollama list 查看)
     temperature: 0.0
     timeout_seconds: 60
+    max_tokens: 4096            # 限制单次生成长度(thinking 模型无上限会退化长生成;截断自愈会翻倍兜底)
 
 # --- Harness 主循环 ---
 harness:
@@ -34,12 +35,9 @@ harness:
 
 # --- 长上下文治理 ---
 context:
-  budget_tokens: 4000           # 软预算:超过则触发裁剪
   hard_limit_tokens: 6000       # 硬上限:裁剪后仍应低于此值
   keep_last_turns: 6            # 保留最近 N 轮对话原文
-  keep_last_tool_results: 8     # 保留最近 N 条工具返回
   max_file_content_chars: 8000  # 单次工具返回里文件内容截断阈值(字符)
-  compressible_age: 3           # 超过该轮数的历史被折叠为摘要
 
 # --- 结构化记忆 ---
 memory:

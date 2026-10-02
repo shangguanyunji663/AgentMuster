@@ -152,6 +152,9 @@ class Orchestrator:
         self._used_tokens = 0
         self.memory = WorkingMemory()
         self.archive = RetryArchive(compress_fn=self._compress_failure)
+        # 编排内共享交付工作区(跨编排隔离;Layer 7 检查器经 artifact["workspace"] 读取)
+        self._shared_ws = (Path(self.config.get("workspace.root", "."))
+                           / f".orch_{task_id}" / "ws")
         if self._resumed_snapshot is not None:
             raw = self._resumed_snapshot
             self._resumed_snapshot = None
@@ -182,7 +185,15 @@ class Orchestrator:
             self._execute_pending_tasks()
 
             if self.validator is not None:
-                verdict = self.validator.verify(self._goal, self._checklist, self._tasks)
+                try:
+                    verdict = self.validator.verify(self._goal, self._checklist, self._tasks)
+                except Exception as exc:
+                    # 验收调用失败不炸编排:降级为未通过,缺失项回流下一轮重试验收
+                    self._emit({"type": "orchestration_validate_error", "task_id": task_id,
+                                "detail": f"{type(exc).__name__}: {exc}"[:200]})
+                    verdict = ValidationVerdict(
+                        completed=False,
+                        missing_requirements=[f"验收调用失败,请重试验收: {type(exc).__name__}"])
             else:
                 verdict = self._auto_verdict()
             if verdict.completed and self._checklist.is_complete:
@@ -219,6 +230,7 @@ class Orchestrator:
         artifact = {
             "task_id": task_id, "goal": self._goal, "success": success,
             "rounds": round_no if round_no >= 1 else 0, "stop_reason": stop_reason,
+            "workspace": str(self._shared_ws),
             "checklist": self._checklist.to_dict(),
             "subtasks": [t.to_dict() for t in self._tasks], "summary": summary,
             "activity": self.memory.all_activity(),
@@ -318,6 +330,8 @@ class Orchestrator:
             return
         self._used_tokens += (int(res.metrics.get("prompt_tokens_total", 0))
                               + int(res.metrics.get("completion_tokens_total", 0)))
+        task.token_usage = int(res.metrics.get("prompt_tokens_total", 0)) \
+            + int(res.metrics.get("completion_tokens_total", 0))
         task.result_summary = res.final_answer or res.error or ""
         control = res.control or {}
         if control.get("action") == "request_block" or res.status == "blocked":
@@ -391,7 +405,7 @@ class Orchestrator:
         # 目录,后续任务可直接使用先任务的产出(dep-chain 类 compound 目标依赖此
         # 语义);跨编排仍完全隔离。记忆/工件按子任务隔离,断点键含子任务 id 天然隔离。
         base = Path(self.config.get("workspace.root", ".")) / f".orch_{self._task_id}"
-        cfg.set("workspace.root", str(base / "ws"))
+        cfg.set("workspace.root", str(self._shared_ws))
         cfg.set("memory.root", str(base / f"memory_{task.id}"))
         cfg.set("checkpoint.root", str(base / "checkpoints"))
         cfg.set("artifacts.root", str(base / f"artifacts_{task.id}"))

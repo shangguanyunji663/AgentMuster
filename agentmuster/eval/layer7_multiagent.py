@@ -233,13 +233,17 @@ def ablation_overrides(ablate: str) -> dict:
 
 
 def _build_config(workdir: Path, overrides: dict, backend: str | None) -> Config:
-    cfg = Config()
+    # 与 CLI 同源:优先加载 config/default.yaml(真实端点/模型名在此配置),再叠加跑批覆盖项
+    default_cfg = PROJECT_ROOT / "config" / "default.yaml"
+    cfg = Config.load(str(default_cfg)) if default_cfg.exists() else Config()
     cfg.set("workspace.root", str(workdir))
     cfg.set("checkpoint.root", str(workdir / ".checkpoints"))
     cfg.set("artifacts.root", str(workdir / ".artifacts"))
     cfg.set("orchestrator.planner_mode", "llm")
     cfg.set("orchestrator.max_rounds", MAX_TASK_ROUNDS)
     cfg.set("harness.max_steps", MAX_TASK_STEPS)
+    # thinking 模型的规划/验证调用生成时间长,跑批超时放宽到 300s(Layer 7 实测教训)
+    cfg.set("model.local_openai.timeout_seconds", 300)
     if backend:
         cfg.set("model.backend", backend)
     for key, value in overrides.items():
@@ -247,8 +251,11 @@ def _build_config(workdir: Path, overrides: dict, backend: str | None) -> Config
     return cfg
 
 
-def run_one(task: dict, workdir: Path, overrides: dict, backend: str | None) -> dict:
+def run_one(task: dict, workdir: Path, overrides: dict, backend: str | None,
+            model: str | None = None) -> dict:
     """跑单任务并返回指标行;工作区由调用方准备(setup 植入已在其中完成)。"""
+    if model:
+        overrides = {**overrides, "model.local_openai.model": model}
     events: list[dict] = []
     cfg = _build_config(workdir, overrides, backend)
     orch = Orchestrator(cfg, backend_factory=lambda t: create_backend(cfg),
@@ -256,7 +263,9 @@ def run_one(task: dict, workdir: Path, overrides: dict, backend: str | None) -> 
     start = time.time()
     report = orch.run(task["goal"])
     duration = time.time() - start
-    check_ok, check_detail = task["check"](workdir)
+    # 客观检查器对准编排的共享交付工作区(子任务产物落在此处,而非 workdir 根)
+    deliverable = Path(report.get("workspace") or workdir)
+    check_ok, check_detail = task["check"](deliverable)
 
     return {
         "task": task["id"],
@@ -267,9 +276,7 @@ def run_one(task: dict, workdir: Path, overrides: dict, backend: str | None) -> 
         "check_detail": check_detail,
         "rounds": report["rounds"],
         "attempts": sum(t["attempts"] for t in report["subtasks"]),
-        "tokens": sum(int(t.get("metrics", {}).get("prompt_tokens_total", 0))
-                      + int(t.get("metrics", {}).get("completion_tokens_total", 0))
-                      for t in report["subtasks"]),
+        "tokens": sum(int(t.get("token_usage", 0)) for t in report["subtasks"]),
         "retries": sum(1 for e in events if e.get("type") == "task_retry_scheduled"),
         "replans": sum(1 for e in events if e.get("type") == "orchestration_replan"),
         "denied_actions": sum(1 for e in events
@@ -304,6 +311,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--tag", default=None, help="结果目录标签(默认带时间戳)")
     parser.add_argument("--backend", choices=["mock", "local_openai"], default=None,
                         help="覆盖 model.backend(默认跟随 config/default.yaml)")
+    parser.add_argument("--model", default=None,
+                        help="覆盖 model.local_openai.model(如 qwen3:4b,调试/对照用)")
     args = parser.parse_args(argv)
 
     tasks = TASKS if args.suite == "full" else TASKS[:QUICK_COUNT]
@@ -332,7 +341,9 @@ def main(argv: list[str] | None = None) -> int:
             task["setup"](workdir)
         print(f"▶ 运行 {task['id']} ({task['difficulty']}) ...", flush=True)
         try:
-            rows.append(run_one(task, workdir, overrides, args.backend))
+            rows.append(run_one(task, workdir, overrides, args.backend, args.model))
+            if args.model:
+                rows[-1]["model"] = args.model
         except Exception as exc:
             rows.append({"task": task["id"], "difficulty": task["difficulty"],
                          "success": False, "agent_success": False, "check_passed": False,

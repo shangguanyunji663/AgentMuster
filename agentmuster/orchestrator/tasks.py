@@ -48,6 +48,8 @@ class Task:
         self.result_summary: str | None = None
         # 自由扩展(编排层消费,如 allow_tools 白名单);随快照往返
         self.extra: dict = dict(extra or {})
+        # 编排层指标:该任务累计 token 消耗(prompt+completion,由执行层回填)
+        self.token_usage = 0
 
     def transition(self, new_status: TaskStatus) -> None:
         allowed = ALLOWED_TRANSITIONS[self.status]
@@ -75,6 +77,7 @@ class Task:
             "result_summary": self.result_summary,
             "depends_on": list(self.depends_on),
             "extra": dict(self.extra),
+            "token_usage": self.token_usage,
         }
 
     @classmethod
@@ -91,6 +94,7 @@ class Task:
         )
         task.attempts = int(data.get("attempts", 0))
         task.result_summary = data.get("result_summary")
+        task.token_usage = int(data.get("token_usage", 0))
         return task
 
     def render(self) -> str:

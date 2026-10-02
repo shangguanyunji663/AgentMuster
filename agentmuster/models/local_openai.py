@@ -240,9 +240,17 @@ class LocalOpenAIBackend(ModelBackend):
                     break
                 wait = min(self.backoff_cap, self.backoff_base * (2 ** attempt))
                 time.sleep(wait)
+            except TimeoutError as e:
+                # 读超时(thinking 模型长生成等)同样可重试;socket.timeout 是 OSError
+                # 但不是 URLError,需单独捕获,否则会穿透重试循环(Layer 7 实测发现)
+                last_exc = e
+                if attempt >= self.max_retries:
+                    break
+                wait = min(self.backoff_cap, self.backoff_base * (2 ** attempt))
+                time.sleep(wait)
         raise ConnectionError(
-            f"多次重试后仍无法连接本地模型服务 {url}。"
-            f"请确认本地 OpenAI 兼容服务已启动。原始错误: {last_exc}"
+            f"多次重试后仍无法完成对本地模型服务 {url} 的请求。"
+            f"请确认本地 OpenAI 兼容服务已启动且超时预算充足。原始错误: {last_exc}"
         )
 
     def _post_sse(self, payload: dict[str, Any]) -> Iterator[dict]:

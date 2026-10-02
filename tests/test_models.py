@@ -108,3 +108,20 @@ class TestSchemas:
         assert payload["tool_calls"][0]["type"] == "function"
         assert payload["tool_calls"][0]["function"]["name"] == "file_read"
         assert payload["tool_calls"][0]["function"]["arguments"] == '{"path":"a.py"}'
+
+
+def test_timeout_error_is_retryable():
+    """读超时必须走重试路径而非穿透(Layer 7 Ollama 实测发现的盲区)。"""
+    from agentmuster.models.local_openai import LocalOpenAIBackend as _L
+
+    backend = _L(max_retries=1, backoff_base=0.01, backoff_cap=0.02)
+    calls = {"n": 0}
+
+    def fake_post(url, data):
+        calls["n"] += 1
+        raise TimeoutError("timed out")
+
+    backend._do_post = fake_post  # type: ignore[method-assign]
+    with pytest.raises(ConnectionError):
+        backend.complete([{"role": "user", "content": "hi"}])
+    assert calls["n"] == 2  # 1 次原始 + 1 次重试,耗尽后归一为 ConnectionError
