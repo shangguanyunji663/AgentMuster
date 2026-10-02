@@ -36,7 +36,8 @@ class Task:
 
     def __init__(self, task_id: str, title: str, description: str = "",
                  done_criteria: str = "", status: TaskStatus = TaskStatus.PENDING,
-                 depends_on: list[str] | None = None) -> None:
+                 depends_on: list[str] | None = None,
+                 extra: dict | None = None) -> None:
         self.id = task_id
         self.title = title
         self.description = description
@@ -45,6 +46,8 @@ class Task:
         self.depends_on = list(depends_on or [])
         self.attempts = 0
         self.result_summary: str | None = None
+        # 自由扩展(编排层消费,如 allow_tools 白名单);随快照往返
+        self.extra: dict = dict(extra or {})
 
     def transition(self, new_status: TaskStatus) -> None:
         allowed = ALLOWED_TRANSITIONS[self.status]
@@ -71,6 +74,7 @@ class Task:
             "attempts": self.attempts,
             "result_summary": self.result_summary,
             "depends_on": list(self.depends_on),
+            "extra": dict(self.extra),
         }
 
     @classmethod
@@ -83,6 +87,7 @@ class Task:
             done_criteria=str(data.get("done_criteria", "")),
             status=TaskStatus(str(data.get("status", "PENDING"))),
             depends_on=[str(d) for d in data.get("depends_on") or []],
+            extra=dict(data.get("extra") or {}),
         )
         task.attempts = int(data.get("attempts", 0))
         task.result_summary = data.get("result_summary")

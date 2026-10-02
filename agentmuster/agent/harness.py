@@ -35,6 +35,7 @@ from ..safety import Redactor, SafetyGuard
 from ..sft_collector import write_sft_sample
 from ..state import Message, RunResult, Step, TaskInput, ToolCall
 from ..tools import ToolContext, ToolRegistry, Workspace
+from ..tools.control_tools import CONTROL_TOOLS, REQUEST_BLOCK, SUBMIT_RESULT
 from ..util import now_iso, short_id
 
 
@@ -155,6 +156,9 @@ class AgentHarness:
         self.logger = get_logger(config)
         self.metrics = Metrics()
         self.current_task_id: str | None = None
+        # 编排层注入(批次②):动作白名单与控制动作收口信号
+        self.allowed_tools: set[str] | None = None
+        self._control_signal: dict | None = None
 
     # ------------------------------------------------------------------
     # 装配工厂
@@ -260,6 +264,9 @@ class AgentHarness:
              stop_after_steps: int | None, drift: dict | None, reason: str) -> RunResult:
         self.current_task_id = task.task_id
         self.metrics = metrics
+        self._control_signal = None
+        if self.guard.repeat_guard is not None:
+            self.guard.repeat_guard.reset()  # 跨任务重置指纹序列
         task_dir = self.artifacts.task_dir(task.task_id)
         recorder = RunRecorder(task_dir / "trajectory.jsonl", redactor=self.redactor)
 
@@ -286,6 +293,7 @@ class AgentHarness:
         max_empty_nudges = int(self.config.get("harness.empty_answer_nudges", 1))
         empty_nudges = 0
         status, final_answer, error = "completed", "", None
+        control: dict | None = None
         steps: list[Step] = []
 
         try:
@@ -382,6 +390,23 @@ class AgentHarness:
                 if self.config.get("checkpoint.enabled", True) and \
                         (step_idx + 1 - start_step) % interval == 0:
                     self._checkpoint(task, step_idx + 1, reason="interval")
+                if self._control_signal is not None:
+                    # 控制动作收口(批次②):submit_result / request_block 终止主循环
+                    signal = self._control_signal
+                    if signal["action"] == SUBMIT_RESULT:
+                        status = "completed"
+                        final_answer = str(signal.get("summary", ""))
+                        control = {"action": SUBMIT_RESULT,
+                                   "success": bool(signal.get("success"))}
+                    else:
+                        status = "blocked"
+                        final_answer = str(signal.get("reason", "未说明原因"))
+                        control = {"action": REQUEST_BLOCK}
+                    recorder.record({"type": "control_end", "action": signal["action"],
+                                     "status": status, "ts": now_iso()})
+                    self._emit({"type": "control_end", "action": signal["action"],
+                                "status": status, "ts": now_iso()})
+                    break
             else:
                 status = "max_steps"
                 recorder.record({"type": "max_steps", "ts": now_iso()})
@@ -418,7 +443,8 @@ class AgentHarness:
         recorder.record({"type": "task_end", "status": status, "ts": now_iso()})
         self._emit({"type": "task_end", "status": status, "ts": now_iso()})
         return RunResult(task_id=task.task_id, status=status, final_answer=final_answer,
-                         steps=steps, metrics=self.metrics.snapshot(), drift=drift, error=error)
+                         steps=steps, metrics=self.metrics.snapshot(), drift=drift, error=error,
+                         control=control)
 
     # ------------------------------------------------------------------
     def _execute_tools(self, raw_calls: list[dict], step_index: int | None = None
@@ -442,6 +468,15 @@ class AgentHarness:
                 params = raw_args
             else:
                 params = {}
+            # 控制动作(批次②):不走安全链/注册表,直接作为本轮终态信号
+            if name in CONTROL_TOOLS:
+                call = ToolCall(id=tc.get("id", short_id("call_")), name=name,
+                                arguments=params, status="ok", meta={"control": name})
+                calls.append(call)
+                tool_msgs.append(Message("tool", f"[控制动作] {name} 已受理", name=name,
+                                         tool_call_id=tc.get("id", "")))
+                self._control_signal = {"action": name, **params}
+                break
             call = ToolCall(id=tc.get("id", short_id("call_")), name=name, arguments=params)
 
             tool = self.registry.get(name) if self.registry.has(name) else None
@@ -467,7 +502,7 @@ class AgentHarness:
     def _run_one_tool(self, tool, params: dict, ctx: ToolContext) -> tuple[str, dict]:
         """单次工具调用的安全链 + 执行。返回 (输出文本, meta)。"""
         meta: dict[str, Any] = {}
-        gr = self.guard.check(tool, params)
+        gr = self.guard.check(tool, params, allowed_tools=self.allowed_tools)
         if not gr.allowed:
             meta.update(status="denied", error=gr.reason)
             return f"[已拦截] {gr.reason}", meta

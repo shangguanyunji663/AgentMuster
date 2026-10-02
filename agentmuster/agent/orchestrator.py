@@ -35,6 +35,7 @@ from ..orchestrator.tasks import Task, TaskStatus
 from ..orchestrator.validator import ValidationVerdict, ValidatorRole
 from ..orchestrator.working_memory import WorkingMemory
 from ..state import Message, TaskInput
+from ..tools.control_tools import CONTROL_TOOLS, RequestBlockTool, SubmitResultTool
 from ..util import short_id, truncate
 
 EventFn = Callable[[dict], None]
@@ -307,6 +308,8 @@ class Orchestrator:
                 goal_text += f"\n{task.description}"
             if task.done_criteria:
                 goal_text += f"\n完成标准: {task.done_criteria}"
+            goal_text += ("\n可用控制动作: submit_result(success, summary) 提交最终结论;"
+                          "request_block(reason) 申报外部阻塞。")
             res = harness.run(TaskInput(task_id=f"{self._task_id}/{task.id}",
                                         goal=goal_text,
                                         extra={"retry_lessons": lessons}))
@@ -316,10 +319,23 @@ class Orchestrator:
         self._used_tokens += (int(res.metrics.get("prompt_tokens_total", 0))
                               + int(res.metrics.get("completion_tokens_total", 0)))
         task.result_summary = res.final_answer or res.error or ""
-        if res.status == "completed":
+        control = res.control or {}
+        if control.get("action") == "request_block" or res.status == "blocked":
+            task.transition(TaskStatus.BLOCKED)  # 执行者申报外部阻塞
+            self.memory.add_task_event(task.id, "task_blocked", task.result_summary or "")
+            self._emit({"type": "subtask_end", "task_id": self._task_id, "sub": task.id,
+                        "status": TaskStatus.BLOCKED.value})
+        elif control.get("action") == "submit_result" and not control.get("success"):
+            self._handle_failure(task, task.result_summary or "执行者主动申报失败")
+        elif res.status == "completed":
             task.transition(TaskStatus.DONE)
         else:
             self._handle_failure(task, task.result_summary or res.status)
+        if control:
+            # 子任务 harness 未接编排事件总线,控制收口由编排层代发
+            self._emit({"type": "subtask_control", "task_id": self._task_id,
+                        "sub": task.id, "action": control.get("action"),
+                        "status": task.status.value})
         self.memory.add_task_event(task.id, "task_end",
                                    f"{task.status.value}: {task.result_summary}")
         self._emit({"type": "subtask_end", "task_id": self._task_id, "sub": task.id,
@@ -379,7 +395,14 @@ class Orchestrator:
         cfg.set("checkpoint.root", str(sub_dir / "checkpoints"))
         cfg.set("artifacts.root", str(sub_dir / "artifacts"))
         cfg.set("observability.enabled", False)
-        return AgentHarness.build(cfg, backend=backend, approver=AllowAllProvider())
+        harness = AgentHarness.build(cfg, backend=backend, approver=AllowAllProvider())
+        # 控制动作(批次②):注册 submit_result/request_block,子任务可用其收口
+        harness.registry.register(SubmitResultTool())
+        harness.registry.register(RequestBlockTool())
+        allow = (task.extra or {}).get("allow_tools")
+        if allow:
+            harness.allowed_tools = set(allow) | CONTROL_TOOLS
+        return harness
 
     def _write_snapshot(self, validated: bool) -> None:
         if not self._store.enabled:

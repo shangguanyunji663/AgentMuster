@@ -17,6 +17,7 @@ from typing import Any, ClassVar
 
 from ..tools.base import HITL, Tool
 from ..tools.sandbox import PathEscapeError
+from .repeat_guard import RepeatedActionGuard
 
 # --------------------------------------------------------------------------
 # 参数校验(轻量 JSON Schema 子集)
@@ -110,7 +111,7 @@ class SafetyGuard:
     _PATH_TOOLS: ClassVar[set[str]] = {"file_read", "file_write", "file_edit", "grep_search", "shell_exec"}
 
     def __init__(self, config, workspace, approver: ApprovalProvider | None = None,
-                 redactor=None):
+                 redactor=None, repeat_guard: RepeatedActionGuard | None = None):
         self.config = config
         self.workspace = workspace
         self.redactor = redactor
@@ -119,6 +120,16 @@ class SafetyGuard:
         self.read_cache_hits = 0
         self.skipped_repeats = 0
         self.denied = 0
+        # 重复/振荡动作 Guard(批次② 并入,第七道防线);显式传 None 可整体关闭
+        if repeat_guard is None and config.get("safety.repeat_guard.enabled", True):
+            repeat_guard = RepeatedActionGuard(
+                max_repeat=int(config.get("safety.repeat_guard.max_repeat", 2)),
+                window_size=int(config.get("safety.repeat_guard.window_size", 12)),
+                window_max=int(config.get("safety.repeat_guard.window_max", 4)),
+            )
+        self.repeat_guard = repeat_guard
+        # 去重缓存命中是否计入 Guard 指纹序列(计入才能检测"反复重读"式刷步)
+        self._count_cache_hits = bool(config.get("safety.repeat_guard.count_cache_hits", True))
         self._approver = approver or self._default_approver()
 
     def _default_approver(self) -> ApprovalProvider:
@@ -134,7 +145,15 @@ class SafetyGuard:
         return ok
 
     # ------------------------------------------------------------------
-    def check(self, tool: Tool, params: dict) -> GuardResult:
+    def check(self, tool: Tool, params: dict,
+              allowed_tools: set[str] | None = None) -> GuardResult:
+        # 0. 动作白名单(Action Policy,批次②):越权即拦截,拒绝原因回灌给模型
+        if allowed_tools is not None and tool.name not in allowed_tools:
+            self.denied += 1
+            return GuardResult(False, reason=(
+                f"角色越权: 动作 '{tool.name}' 不在白名单 {sorted(allowed_tools)} 内,"
+                "操作已被拦截。请改用白名单内的工具,或用 submit_result / request_block 收口。"))
+
         # 1. 参数校验
         errors = validate_params(tool.parameters, params)
         if errors:
@@ -169,9 +188,22 @@ class SafetyGuard:
                     self.read_cache_hits += 1
                 # 更新计数,返回缓存输出(短路由,不再执行)
                 self._dedup[key] = (count + 1, last_output)
+                # 缓存命中也计入 Guard 指纹:反复重读同一内容同样是刷步行为
+                if self.repeat_guard is not None and self._count_cache_hits:
+                    verdict = self.repeat_guard.check(tool.name, params)
+                    if not verdict.allowed:
+                        self.denied += 1
+                        return GuardResult(False, reason=verdict.message or "Guard 拦截")
                 return GuardResult(True, cached_output=last_output,
                                    reason="重复调用被拦截,复用缓存结果", danger=tool.danger,
                                    action={"tool": tool.name, "params": params, "repeat": count + 1})
+
+        # 4b. 重复/振荡动作 Guard(批次②:连续重复/窗口计数/周期振荡三重检测)
+        if self.repeat_guard is not None:
+            verdict = self.repeat_guard.check(tool.name, params)
+            if not verdict.allowed:
+                self.denied += 1
+                return GuardResult(False, reason=verdict.message or "Guard 拦截")
 
         # 5. HITL 审批
         needs = tool.danger == HITL

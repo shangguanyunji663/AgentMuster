@@ -69,6 +69,14 @@ DEFAULT: dict[str, Any] = {
         "hitl_policy": "prompt",
         "dedup_enabled": True,
         "redaction_enabled": True,
+        # 重复/振荡动作 Guard(批次②,移植自 miniMaster):三重死循环检测
+        "repeat_guard": {
+            "enabled": True,
+            "max_repeat": 2,
+            "window_size": 12,
+            "window_max": 4,
+            "count_cache_hits": True,  # 去重缓存命中也计入指纹(检测反复重读式刷步)
+        },
         "shell": {
             "allow_commands": [
                 "echo", "ls", "dir", "pwd", "cat", "type", "find", "grep",

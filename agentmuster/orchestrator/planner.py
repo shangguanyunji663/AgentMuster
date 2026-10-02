@@ -114,6 +114,7 @@ class PlannerRole:
                     description=str(raw.get("description", "")).strip(),
                     done_criteria=str(raw.get("done_criteria", "")).strip(),
                     depends_on=depends_on,
+                    extra=dict(raw.get("extra") or {}),
                 )
             )
         return tasks

@@ -315,3 +315,57 @@ def test_s12_deterministic_degradation(tmp_path):
     assert art["subtasks"][0]["status"] == "DONE"
     assert art["checklist"]["items"][0]["satisfied"] is True  # 自动验收回填
     assert art["stop_reason"] == "Completion Checklist 验收通过"
+
+
+# ---- S13 submit_result 收口 → DONE(批次② 控制动作) ----
+def test_s13_submit_result_drives_done(tmp_path):
+    events: list[dict] = []
+    plan_resp = json_response(_plan(T1, checklist=["hello 为 hi"]))
+    planner = PlannerRole(MockBackend(script=[plan_resp]), events.append)
+    validator = ValidatorRole(MockBackend(script=[json_response(_verdict(True, "文件已在"))]),
+                              events.append)
+    sub = MockBackend(script=[
+        {"tool_calls": [{"name": "file_write",
+                         "arguments": {"path": "hello.txt", "content": "hi"}}]},
+        {"tool_calls": [{"name": "submit_result",
+                         "arguments": {"success": True, "summary": "hello.txt 已写入 hi"}}]},
+    ])
+    orch = Orchestrator(_config(tmp_path), planner=planner, validator=validator,
+                        backend_factory=lambda t: sub, on_event=events.append)
+    art = orch.run("写 hello")
+    assert art["success"] is True
+    assert art["subtasks"][0]["status"] == "DONE"
+    assert art["subtasks"][0]["result_summary"] == "hello.txt 已写入 hi"
+    assert any(e["type"] == "subtask_control" and e["action"] == "submit_result" for e in events)
+
+
+# ---- S14 request_block 申报阻塞 → replan 绕行(批次②) ----
+def test_s14_request_block_then_bypass(tmp_path):
+    events: list[dict] = []
+    plan = _plan({"id": "T1", "title": "需要外部权限", "description": "d",
+                  "done_criteria": "拿到审批"},
+                 checklist=["拿到审批或等效产出"])
+    replan = {"analysis": "权限拿不到,改走无需审批的路径",
+              "tasks": [{"id": "T2", "title": "替代方案", "description": "d",
+                         "done_criteria": "等效产出完成"}]}
+    planner = PlannerRole(MockBackend(script=[json_response(plan), json_response(replan)]),
+                          events.append)
+    validator = ValidatorRole(MockBackend(script=[json_response(_verdict(False, "未完成")),
+                                                  json_response(_verdict(True, "替代完成"))]),
+                              events.append)
+
+    def factory(task):
+        if task.id == "T1":
+            return MockBackend(script=[{"tool_calls": [{"name": "request_block",
+                                                        "arguments": {"reason": "缺少审批权限"}}]}])
+        return MockBackend(script=[{"content": "替代完成"}])
+
+    orch = Orchestrator(_config(tmp_path), planner=planner, validator=validator,
+                        backend_factory=factory, on_event=events.append)
+    art = orch.run("阻塞绕行")
+    t1 = next(s for s in art["subtasks"] if s["id"] == "T1")
+    assert t1["status"] == "BLOCKED"  # 执行者申报的外部阻塞
+    assert art["success"] is True and art["rounds"] == 2
+    blocked_events = [e for e in events if e["type"] == "subtask_blocked"
+                      or (e["type"] == "subtask_end" and e.get("status") == "BLOCKED")]
+    assert blocked_events

@@ -96,9 +96,10 @@ class TaskInput:
 class RunResult:
     """一次运行的最终结果。"""
     task_id: str
-    status: str                     # completed | max_steps | error | interrupted
+    status: str                     # completed | max_steps | error | interrupted | blocked
     final_answer: str = ""
     steps: list = field(default_factory=list)
     metrics: dict = field(default_factory=dict)
     drift: dict | None = None    # resume 场景下的漂移报告
     error: str | None = None
+    control: dict | None = None  # 控制动作收口:{"action": submit_result|request_block, ...}
