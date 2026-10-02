@@ -7,6 +7,7 @@
 ## [Unreleased]
 
 ### Fixed
+- CI 跨平台修复(第 2/3 轮):① Windows CI 上 MCP fake server 子进程按 locale(cp1252)写 stdio,中文经 JSON 往返即乱码——`clean_subprocess_env()` 统一强制子进程 `PYTHONIOENCODING=utf-8`/`PYTHONUTF8=1`;② Linux CI 上沙箱不拦截 Windows 风格反斜杠穿越(`..\evil` 在 POSIX 上只是合法文件名)——`Workspace.resolve` 把反斜杠归一为分隔符,安全边界跨平台一致,模型探测路径无法借宿主差异绕过。
 - CI 首跑失败(Linux):pytest-cov 的 `COV_CORE_*` 环境变量遗传给测试内启动的 python 子进程(Layer 7 客观检查器 / MCP fake server),子进程写出与主进程分支模式不一致的覆盖率数据,主进程收尾 combine 报 `DataError: Can't combine statement coverage data with branch data` 打穿 pytest。三个子进程出生点(检查器 `run_python` / `MCPStdioClient` / shell 工具)统一经 `util.clean_subprocess_env()` 消毒——这些子进程本就不在测量范围;覆盖率门禁实测通过(全局 80.4% / 编排层 94.9%)。
 ### Added
 - Layer 7 首次真实 Ollama 实测(本地 qwen3.5:2b):hello 单任务冒烟 ✅(agent+check 双过,1 轮 118.7s/15259 tokens,Planner 拆 3 子任务接力交付、`submit_result` 真实收口),quick 套件 3/4(hello/notes/calc ✅,指标里可见真实 Guard 拦截=1/2 与重试=1;fizzbuzz ✗——规划 JSON 被 thinking 模型冗长思考反复顶到 max_tokens 截断,判定为小模型能力边界而非管道缺陷;qwen3:4b 对照跑因生成更慢在规划调用超时,待 Ollama 侧调优如关闭 thinking/加长超时)。实测驱动的修复:`LocalOpenAIBackend` 读超时(`socket.timeout`)此前穿透重试循环,现归入可重试路径并补回归测试;验收调用失败降级为缺失项回流(不再炸编排);本地模型 `max_tokens: 4096` 限幅防退化长生成(截断自愈翻倍兜底);Layer 7 runner 接入 `config/default.yaml`(端点/模型名单一来源)+ `--model` 覆盖;跑批超时放宽 300s;编排报告带出共享交付工作区路径(`artifact["workspace"]`,检查器据此对准)+ `Task.token_usage` 指标落地(修 tokens 恒 0)。测试 +1(超时重试回归),总数 348 → 349。

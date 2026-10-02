@@ -32,7 +32,11 @@ class Workspace:
         raw = str(path)
         if "\x00" in raw:
             raise PathEscapeError("路径含空字节,已拒绝")
-        p = Path(path)
+        # 跨平台加固:反斜杠归一为分隔符——Windows 风格的 ..\escape 在 POSIX 上
+        # 同样按穿越处理,模型探测路径不因宿主平台差异而绕过安全边界
+        if "\\" in raw:
+            raw = raw.replace("\\", "/")
+        p = Path(raw)
         if p.is_absolute():
             if not self.allow_absolute:
                 raise PathEscapeError(f"绝对路径被拒绝(工作区隔离): {path}")
