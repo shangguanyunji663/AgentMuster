@@ -269,6 +269,11 @@ class AgentHarness:
                 self.config.get("memory.followup_inject_summaries", True):
             mem_block = self.memory.followup_context(task_id=task.task_id,
                                                      parent_task_id=task.follow_up_of)
+        # 编排层注入:子任务的 Retry Archive 教训(经 TaskInput.extra 传入)进入上下文,
+        # 让重试任务直接拿到历史失败教训,避免重蹈覆辙
+        retry_lessons = str((task.extra or {}).get("retry_lessons") or "")
+        if retry_lessons:
+            mem_block = f"{mem_block}\n{retry_lessons}".strip() if mem_block else retry_lessons
         self.context.set_task(task.goal, task.files_hint, mem_block)
         self._checkpoint(task, start_step, reason=reason)
 

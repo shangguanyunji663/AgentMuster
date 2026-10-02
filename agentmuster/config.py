@@ -94,6 +94,19 @@ DEFAULT: dict[str, Any] = {
             "judge": {"base_url": None, "api_key": None, "model": None},
         }
     },
+    # 多智能体编排(移植自 miniMaster):多轮「执行→验收→重规划」闭环;
+    # deterministic 模式零 LLM 退化(单任务单轮,向后兼容),llm 模式启用角色闭环
+    "orchestrator": {
+        "planner_mode": "deterministic",  # deterministic | llm
+        "max_rounds": 3,
+        "max_retries": 2,
+        "parallel": 1,
+        "max_total_tokens": 800000,  # prompt+completion 全局预算;0 = 不限
+        "roles": {
+            "planner": {"model": "", "temperature": 0.2},    # model 空 = 用主后端
+            "validator": {"model": "", "temperature": 0.0},
+        },
+    },
     # 子代理编排:默认关闭;显式调用 Orchestrator 时才生效(max_workers 控制并行度)
     "agent": {"orchestrator": {"enabled": False, "max_workers": 4}},
 }

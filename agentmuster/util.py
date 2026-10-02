@@ -7,6 +7,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import tempfile
 import time
 import uuid
@@ -87,3 +88,28 @@ def truncate(text: str, max_chars: int, head_ratio: float = 0.6) -> str:
     if tail < 0:
         return text[:max_chars]
     return text[:head] + f"\n…[截断 {len(text) - max_chars} 字符]…\n" + text[-tail:]
+
+
+def extract_json(text: str) -> dict:
+    """从模型回复中尽力解析第一个合法 JSON 对象(裸 JSON / 代码块 / 首尾大括号兜底)。
+
+    小模型常在 JSON 外包裹说明文字或 markdown 代码块;逐级尝试候选片段,
+    全部失败抛 ValueError(由结构化输出助手回灌反馈重试)。
+    """
+    if not text or not text.strip():
+        raise ValueError("模型返回空内容,无法解析 JSON")
+    candidates: list[str] = []
+    fences = re.findall(r"```(?:json)?\s*(.*?)```", text, flags=re.S)
+    candidates += [f.strip() for f in fences]
+    candidates.append(text.strip())
+    start, end = text.find("{"), text.rfind("}")
+    if start != -1 and end > start:
+        candidates.append(text[start:end + 1])
+    for cand in candidates:
+        try:
+            obj = json.loads(cand)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(obj, dict):
+            return obj
+    raise ValueError(f"无法从模型回复中解析 JSON,原文片段: {text[:300]!r}")

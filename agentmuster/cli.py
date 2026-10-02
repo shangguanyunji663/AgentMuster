@@ -96,6 +96,8 @@ def cmd_orchestrate(args) -> int:
     cfg = _build_config(args)
     if getattr(args, "max_workers", None):
         cfg.set("agent.orchestrator.max_workers", args.max_workers)
+    if getattr(args, "planner", None):
+        cfg.set("orchestrator.planner_mode", args.planner)
 
     def backend_factory(sub):
         # 每个子任务按其配置装配后端(任务文件无 script 时走真实/配置后端)
@@ -221,6 +223,8 @@ def main(argv=None) -> int:
                    help="覆盖 model.backend(子任务共享此后端)")
     o.add_argument("--max-workers", type=int, default=None,
                    help="并行子任务数(默认 config agent.orchestrator.max_workers)")
+    o.add_argument("--planner", choices=["deterministic", "llm"], default=None,
+                   help="编排 planner 模式(llm 启用 Planner-Validator 角色闭环,需配置模型端点)")
     o.set_defaults(func=cmd_orchestrate)
 
     args = p.parse_args(argv)
