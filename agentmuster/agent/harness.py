@@ -172,6 +172,13 @@ class AgentHarness:
         ws = Workspace(ws_root, config.get("workspace.allow_absolute", False))
         from ..tools import build_registry
         registry = build_registry()
+        # MCP 外部工具接入(批次③):按配置连接 stdio server,失败降级纯内置工具
+        mcp_cmd = config.get("tools.mcp.server_cmd")
+        if mcp_cmd:
+            from ..tools.mcp_client import attach_mcp_tools
+            attach_mcp_tools(registry, server_cmd=str(mcp_cmd),
+                             timeout=float(config.get("tools.mcp.timeout", 30.0)),
+                             on_event=on_event)
         memory = StructuredMemory(memory_root or config.get("memory.root", ".agentmuster/memory"),
                                   enabled=config.get("memory.enabled", True),
                                   retrieval_mode=config.get("memory.retrieval.mode", "substring"),

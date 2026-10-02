@@ -33,18 +33,19 @@ DEFAULT: dict[str, Any] = {
             "backoff_base": 0.5,
             "backoff_cap": 8.0,
             "stream": False,
+            "max_tokens": None,            # 不设则由服务端默认;截断自愈依赖此值
+            "protocol_fallback": True,     # 批次③:端点不支持 tools 时单向降级文本协议
+            "truncation_self_heal": True,  # 批次③:finish_reason=length 时 2×max_tokens 重试
+            "max_tokens_ceiling": 32768,
         },
         # 成本核算价目(每 1k token 美元)。通配键 "*" 作为缺省;未配置则不计成本。
         "pricing": {},
     },
     "harness": {"max_steps": 30, "max_tool_calls_per_turn": 8},
     "context": {
-        "budget_tokens": 4000,
         "hard_limit_tokens": 6000,
         "keep_last_turns": 6,
-        "keep_last_tool_results": 8,
         "max_file_content_chars": 8000,
-        "compressible_age": 3,
         "summarizer": "deterministic",  # deterministic | llm
     },
     "memory": {
@@ -88,6 +89,10 @@ DEFAULT: dict[str, Any] = {
             ],
         },
         "allow_write_outside_ext": [],
+    },
+    "tools": {
+        # MCP 外部工具服务(批次③):stdio server 命令行;空 = 不启用
+        "mcp": {"server_cmd": "", "timeout": 30.0},
     },
     "artifacts": {"root": ".agentmuster/artifacts", "redact_artifacts": True},
     "logging": {"level": "INFO", "file": ".agentmuster/harness.log", "console": True,

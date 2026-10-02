@@ -63,9 +63,8 @@ fail_under = 0
 [tool.ruff]
 line-length = 110
 target-version = "py311"
-# 示例/生成脚本不参与 lint(giant_test.py 为约 4669 行的生成产物)
-# conda 环境目录(项目内置 .conda 与 CI 复刻用 .conda-*)与运行期产物(.mycoder/.pytest_tmp)不参与 lint
-exclude = ["examples", "generate_test_file.py", ".conda", ".conda-*", ".mycoder", ".pytest_tmp"]
+# 示例目录不参与 lint(生成产物);conda 环境目录与运行期产物不参与 lint
+exclude = ["examples", ".conda", ".conda-*", ".mycoder", ".pytest_tmp"]
 
 [tool.ruff.lint]
 select = [

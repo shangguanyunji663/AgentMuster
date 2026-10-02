@@ -39,5 +39,9 @@ def create_backend(config) -> ModelBackend:
             backoff_base=o.get("backoff_base", 0.5),
             backoff_cap=o.get("backoff_cap", 8.0),
             stream=o.get("stream", False),
+            max_tokens=o.get("max_tokens"),
+            protocol_fallback=bool(o.get("protocol_fallback", True)),
+            truncation_self_heal=bool(o.get("truncation_self_heal", True)),
+            max_tokens_ceiling=int(o.get("max_tokens_ceiling", 32768)),
         )
     raise ValueError(f"未知模型后端: {kind}(支持 mock / local_openai)")

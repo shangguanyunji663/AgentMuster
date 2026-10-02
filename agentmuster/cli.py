@@ -159,7 +159,7 @@ def cmd_doctor(args) -> int:
     cfg = _build_config(args)
     print(f"模型后端: {cfg.model_backend}")
     print(f"工作区根: {cfg.workspace_root}")
-    print(f"上下文预算: {cfg.get('context.budget_tokens')} tokens")
+    print(f"上下文硬上限: {cfg.get('context.hard_limit_tokens')} tokens")
     print(f"API 地址: 127.0.0.1:{cfg.get('api.port')}")
     return 0
 

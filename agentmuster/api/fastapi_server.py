@@ -213,7 +213,7 @@ def create_app(config: Config):
     def api_health():
         return {"status": "ok", "model": config.model_backend,
                 "workspace": config.workspace_root,
-                "budget_tokens": config.get("context.budget_tokens")}
+                "hard_limit_tokens": config.get("context.hard_limit_tokens")}
 
     @app.get("/vue.global.prod.js")
     def vue_runtime():

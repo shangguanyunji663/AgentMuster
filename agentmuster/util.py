@@ -113,3 +113,39 @@ def extract_json(text: str) -> dict:
         if isinstance(obj, dict):
             return obj
     raise ValueError(f"无法从模型回复中解析 JSON,原文片段: {text[:300]!r}")
+
+
+def parse_text_action(content: str) -> dict | None:
+    """从文本回复中提取动作:XML 工具标签 → 代码块 → 裸 JSON → 首尾大括号。
+
+    返回 {"action": "tool", "name", "arguments"} 或 {"action": "final", "content"};
+    无法解析返回 None(批次③,移植自 miniMaster 文本协议,快照 24f4247)。
+    """
+    if not content or not content.strip():
+        return None
+    # 部分模型在文本模式下仍用 XML 风格序列化工具调用(<tool_call>{...}</tool_call>)
+    for tag in ("tool_call", "function_call"):
+        for raw in re.findall(rf"<{tag}>\s*(\{{.*?\}})\s*</{tag}>", content, flags=re.S):
+            try:
+                obj = json.loads(raw)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(obj, dict) and obj.get("name"):
+                return {"action": "tool", "name": str(obj["name"]),
+                        "arguments": obj.get("arguments") or {}}
+    candidates = [content.strip()]
+    fences = re.findall(r"```(?:json)?\s*(.*?)```", content, flags=re.S)
+    candidates = [f.strip() for f in fences] + candidates
+    start, end = content.find("{"), content.rfind("}")
+    if start != -1 and end > start:
+        candidates.append(content[start:end + 1])
+    for cand in candidates:
+        try:
+            obj = json.loads(cand)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(obj, dict) and obj.get("action") in ("tool", "final"):
+            if obj["action"] == "tool" and not obj.get("name"):
+                continue
+            return obj
+    return None
