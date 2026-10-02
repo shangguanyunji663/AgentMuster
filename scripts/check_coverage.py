@@ -4,12 +4,18 @@ pytest-cov 不支持按路径分别 fail_under,故以 coverage.json + 本脚本�
 
     pytest --cov=agentmuster --cov-report=json:coverage.json
     python scripts/check_coverage.py coverage.json
+
+注意:输出一律 ASCII——Windows runner 控制台是 cp1252,中文/✓✗ 都会
+UnicodeEncodeError(首跑实测)。
 """
 from __future__ import annotations
 
 import json
 import sys
 from pathlib import Path
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 GLOBAL_FLOOR = 75.0
 ORCHESTRATOR_FLOOR = 90.0
@@ -31,17 +37,16 @@ def main(argv: list[str] | None = None) -> int:
 
     ok = True
     if total < GLOBAL_FLOOR:
-        print(f"[FAIL] 全局覆盖率 {total:.1f}% < {GLOBAL_FLOOR}%")
+        print(f"[FAIL] global coverage {total:.1f}% < {GLOBAL_FLOOR}%")
         ok = False
     else:
-        print(f"[OK] 全局覆盖率 {total:.1f}% >= {GLOBAL_FLOOR}%")
+        print(f"[OK] global coverage {total:.1f}% >= {GLOBAL_FLOOR}%")
     if orch < ORCHESTRATOR_FLOOR:
-        print(f"[FAIL] 编排层覆盖率 {orch:.1f}% < {ORCHESTRATOR_FLOOR}%")
+        print(f"[FAIL] orchestrator coverage {orch:.1f}% < {ORCHESTRATOR_FLOOR}%")
         ok = False
     else:
-        # 输出只用 ASCII:Windows runner 控制台 cp1252 打不出 ✓/✗(首跑实测)
-        print(f"[OK] 编排层覆盖率 {orch:.1f}% >= {ORCHESTRATOR_FLOOR}%"
-              f"({covered}/{statements} 行,{len(orch_files)} 文件)")
+        print(f"[OK] orchestrator coverage {orch:.1f}% >= {ORCHESTRATOR_FLOOR}%"
+              f"({covered}/{statements} lines,{len(orch_files)} files)")
     return 0 if ok else 1
 
 
