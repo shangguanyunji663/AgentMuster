@@ -90,6 +90,21 @@ def truncate(text: str, max_chars: int, head_ratio: float = 0.6) -> str:
     return text[:head] + f"\n…[截断 {len(text) - max_chars} 字符]…\n" + text[-tail:]
 
 
+def clean_subprocess_env() -> dict:
+    """子进程环境消毒:剥掉覆盖率调试钩子变量,避免子进程意外启动测量。
+
+    pytest-cov 以 --cov 运行时会注入 COV_CORE_* 环境变量并遗传给子进程,
+    子进程各自写出与主进程分支模式不一致的覆盖率数据,主进程收尾 combine 时
+    报 DataError(Linux CI 首跑实测)。检查器脚本/MCP server/shell 命令等
+    子进程都不在测量范围内,统一剥掉 COV_CORE_* 与 COVERAGE_*。
+    """
+    env = dict(os.environ)
+    for key in list(env):
+        if key.startswith(("COV_CORE_", "COVERAGE_")):
+            env.pop(key)
+    return env
+
+
 def extract_json(text: str) -> dict:
     """从模型回复中尽力解析第一个合法 JSON 对象(裸 JSON / 代码块 / 首尾大括号兜底)。
 

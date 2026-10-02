@@ -19,6 +19,7 @@ import threading
 from collections.abc import Callable
 from typing import Any
 
+from ..util import clean_subprocess_env
 from .base import WARN, Tool, ToolRegistry, ToolResult
 
 MCP_PROTOCOL_VERSION = "2024-11-05"
@@ -51,6 +52,7 @@ class MCPStdioClient:
                 stderr=subprocess.DEVNULL,  # server 日志走 stderr,避免撑爆管道
                 text=True,
                 encoding="utf-8",
+                env=clean_subprocess_env(),
             )
         except OSError as exc:
             raise MCPError(f"MCP server 启动失败 ({self.command}): {exc}") from exc

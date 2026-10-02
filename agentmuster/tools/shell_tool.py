@@ -8,6 +8,7 @@ from __future__ import annotations
 import subprocess
 import time
 
+from ..util import clean_subprocess_env
 from .base import HITL, Tool, ToolContext, ToolResult
 
 
@@ -36,6 +37,7 @@ class ShellExecTool(Tool):
                 command, cwd=str(workdir), shell=True,
                 capture_output=True, text=True, timeout=min(timeout, 30),
                 errors="replace",
+                env=clean_subprocess_env(),
             )
         except subprocess.TimeoutExpired:
             return ToolResult(ok=False, error=f"命令超时(>{timeout}s)被终止")

@@ -23,6 +23,7 @@ from pathlib import Path
 from ..agent.orchestrator import Orchestrator
 from ..config import Config
 from ..models import create_backend
+from ..util import clean_subprocess_env
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 QUICK_COUNT = 4
@@ -41,6 +42,7 @@ def run_python(workdir: Path, script: str, *args: str, timeout: int = 60) -> tup
         encoding="utf-8",
         errors="replace",
         timeout=timeout,
+        env=clean_subprocess_env(),
     )
     return proc.returncode == 0, (proc.stdout or "") + (proc.stderr or "")
 
