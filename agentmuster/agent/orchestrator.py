@@ -387,13 +387,14 @@ class Orchestrator:
         from ..safety import AllowAllProvider
         from .harness import AgentHarness
         cfg = Config(self.config.to_dict())
-        # 每子任务完全独立的工作区 / 记忆 / 断点 / 工件根,避免并行时相互污染
-        base = Path(self.config.get("workspace.root", "."))
-        sub_dir = base / f".orch_{task.id}"
-        cfg.set("workspace.root", str(sub_dir / "ws"))
-        cfg.set("memory.root", str(sub_dir / "memory"))
-        cfg.set("checkpoint.root", str(sub_dir / "checkpoints"))
-        cfg.set("artifacts.root", str(sub_dir / "artifacts"))
+        # 同一编排内的子任务共享一个交付工作区(批次④修正):目标级产物落在同一
+        # 目录,后续任务可直接使用先任务的产出(dep-chain 类 compound 目标依赖此
+        # 语义);跨编排仍完全隔离。记忆/工件按子任务隔离,断点键含子任务 id 天然隔离。
+        base = Path(self.config.get("workspace.root", ".")) / f".orch_{self._task_id}"
+        cfg.set("workspace.root", str(base / "ws"))
+        cfg.set("memory.root", str(base / f"memory_{task.id}"))
+        cfg.set("checkpoint.root", str(base / "checkpoints"))
+        cfg.set("artifacts.root", str(base / f"artifacts_{task.id}"))
         cfg.set("observability.enabled", False)
         harness = AgentHarness.build(cfg, backend=backend, approver=AllowAllProvider())
         # 控制动作(批次②):注册 submit_result/request_block,子任务可用其收口
@@ -402,6 +403,10 @@ class Orchestrator:
         allow = (task.extra or {}).get("allow_tools")
         if allow:
             harness.allowed_tools = set(allow) | CONTROL_TOOLS
+        # 子任务内部事件(tool_call/step_end 等)以 sub 标签并入编排事件流
+        def _sub_event(event: dict, _sub: str = task.id) -> None:
+            self._emit({"sub": _sub, **event})
+        harness.on_event = _sub_event
         return harness
 
     def _write_snapshot(self, validated: bool) -> None:

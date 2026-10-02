@@ -55,3 +55,7 @@ desktop.ini
 
 # ---- 10. 杂项临时路径 ----
 /tmp/
+
+# ---- Layer 7 基准运行产物(批次④) ----
+eval/workspaces/
+eval/results/

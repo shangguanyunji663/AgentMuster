@@ -72,9 +72,9 @@ def test_s1_single_round_close_loop(tmp_path):
     art = orch.run("创建两个文件")
     assert art["success"] is True and art["rounds"] == 1
     assert all(i["satisfied"] for i in art["checklist"]["items"])
-    ws = Path(tmp_path) / "ws"
-    assert (ws / ".orch_T1" / "ws" / "hello.txt").read_text(encoding="utf-8") == "hi"
-    assert (ws / ".orch_T2" / "ws" / "count.txt").exists()
+    ws = Path(tmp_path) / "ws" / f".orch_{art['task_id']}" / "ws"  # 编排内共享交付目录
+    assert (ws / "hello.txt").read_text(encoding="utf-8") == "hi"
+    assert (ws / "count.txt").exists()
     types = [e["type"] for e in events]
     assert "orchestration_plan" in types and "orchestration_validated" in types
     assert types.count("subtask_end") == 2
@@ -104,7 +104,8 @@ def test_s2_replan_after_reject(tmp_path):
     art = orch.run("写 hello 文件")
     assert art["success"] is True and art["rounds"] == 2
     assert any(e["type"] == "orchestration_replan" for e in events)
-    assert (Path(tmp_path) / "ws" / ".orch_T2" / "ws" / "hello.txt").read_text(encoding="utf-8") == "hi"
+    ws = Path(tmp_path) / "ws" / f".orch_{art['task_id']}" / "ws"
+    assert (ws / "hello.txt").read_text(encoding="utf-8") == "hi"  # T2 在共享目录修正 T1 的产出
 
 
 # ---- S3 checklist 缺失时从 done_criteria 兜底派生 ----
@@ -270,9 +271,9 @@ def test_s10_parallel_isolation(tmp_path):
                         if t.id == "T1" else _file_backend("count.txt", "0"),
                         on_event=events.append)
     art = orch.run("并行两文件")
-    ws = Path(tmp_path) / "ws"
-    assert (ws / ".orch_T1" / "ws" / "hello.txt").exists()
-    assert (ws / ".orch_T2" / "ws" / "count.txt").exists()
+    ws = Path(tmp_path) / "ws" / f".orch_{art['task_id']}" / "ws"
+    assert (ws / "hello.txt").exists()      # 共享交付目录:两任务产物并存
+    assert (ws / "count.txt").exists()
     assert art["success"] is True
     assert [e["type"] for e in events].count("subtask_end") == 2
 
