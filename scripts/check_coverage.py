@@ -31,15 +31,16 @@ def main(argv: list[str] | None = None) -> int:
 
     ok = True
     if total < GLOBAL_FLOOR:
-        print(f"✗ 全局覆盖率 {total:.1f}% < {GLOBAL_FLOOR}%")
+        print(f"[FAIL] 全局覆盖率 {total:.1f}% < {GLOBAL_FLOOR}%")
         ok = False
     else:
-        print(f"✓ 全局覆盖率 {total:.1f}% >= {GLOBAL_FLOOR}%")
+        print(f"[OK] 全局覆盖率 {total:.1f}% >= {GLOBAL_FLOOR}%")
     if orch < ORCHESTRATOR_FLOOR:
-        print(f"✗ 编排层覆盖率 {orch:.1f}% < {ORCHESTRATOR_FLOOR}%")
+        print(f"[FAIL] 编排层覆盖率 {orch:.1f}% < {ORCHESTRATOR_FLOOR}%")
         ok = False
     else:
-        print(f"✓ 编排层覆盖率 {orch:.1f}% >= {ORCHESTRATOR_FLOOR}%"
+        # 输出只用 ASCII:Windows runner 控制台 cp1252 打不出 ✓/✗(首跑实测)
+        print(f"[OK] 编排层覆盖率 {orch:.1f}% >= {ORCHESTRATOR_FLOOR}%"
               f"({covered}/{statements} 行,{len(orch_files)} 文件)")
     return 0 if ok else 1
 
