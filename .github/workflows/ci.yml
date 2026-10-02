@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: ${{ matrix.os }} / py${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      # 项目环境形态:依赖一律经 requirements 文件导入(与本地 .conda 环境一致)
+      - name: 安装依赖(requirements 文件)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+          pip install -r requirements-api.txt
+          pip install -e . --no-deps
+
+      - name: Lint(ruff)
+        run: ruff check .
+
+      - name: 类型检查(mypy)
+        run: mypy agentmuster tests
+
+      - name: 测试 + 覆盖率
+        run: pytest --cov=agentmuster --cov-report=json:coverage.json --cov-report=term-missing:skip-covered
+
+      - name: 覆盖率门禁(全局 ≥75%,编排层 ≥90%)
+        run: python scripts/check_coverage.py coverage.json

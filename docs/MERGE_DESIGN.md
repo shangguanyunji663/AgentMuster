@@ -1,8 +1,13 @@
 # MERGE_DESIGN：miniMaster 角色层移植设计（接口对齐 + 分批计划 + 测试计划）
 
-> 状态：✅ 已评审共识（grilling 决策树三轮访谈，2026-10-02）
+> 状态：✅ 已评审共识（grilling 决策树三轮访谈，2026-10-02）｜**批次①-⑤ 已全部合入**（见 CHANGELOG [Unreleased]）；Layer 7 真实模型跑批待手动执行
 > 基线：mycoder `main` @ `7eae67c`（AgentMuster 继承其全部 git 历史）｜miniMaster 快照 @ `24f4247`（80 文件，本地 git 仓库）
 > 本文档是合并工作的执行依据；每批合入时更新本文状态标记与 CHANGELOG。
+>
+> **执行期修订**（相对原设计）：
+> 1. §5.6 WorkingMemory 落地比设计更精简——D1 定案后 Executor 视图消失，三级裁剪机随之移除（留之即死代码），只保留角色视图渲染 + 有界活动日志；教训压缩由 RetryArchive 承担。
+> 2. §5.3 批次④ 修正：同一编排内的子任务**共享交付工作区**（`.orch_<orch_id>/ws`）——原"每子任务完全隔离"会拆散 dep-chain 类 compound 目标；跨编排仍完全隔离，memory/artifacts 仍按子任务隔离。
+> 3. 协议降级/截断自愈以纯 urllib 实现，未引入 openai SDK（较原计划 `[llm]` extra 更强，核心零依赖不变）。
 
 ---
 
@@ -317,10 +322,11 @@ pytest-cov 不支持按路径分别 fail_under，采用：`coverage json` 输出
 
 ## 9. 验收清单（Definition of Done）
 
-- [ ] 五批全部合入，每批 CHANGELOG 条目 + 独立 commit 主题
-- [ ] 全量测试绿：基座 272 项 + 移植/新增（预期 +120 项左右）
-- [ ] miniMaster 84 项用例的对应物按 §7.2 全部落位或有记录的取舍
-- [ ] CI 双 OS 矩阵绿，覆盖率门禁生效（orchestrator ≥90% / 全局 ≥75%）
-- [ ] Layer 7 真实模型 8/8 + ablate 对照报告（手动）
-- [ ] README / ARCHITECTURE 呈现"单 Agent 底座 / 多智能体编排 / 七层评测"三层结构
-- [ ] 溯源：CHANGELOG 记录 miniMaster 快照 `24f4247` 与各批次移植范围
+- [x] 五批全部合入，每批 CHANGELOG 条目 + 独立 commit 主题（b19ba1e/50ec4b2/e37496d/3d2a890/86f1fc3 + 批次⑤）
+- [x] 全量测试绿：基座 272 项 + 移植/新增 76 项 = 348 项全绿
+- [x] miniMaster 84 项用例的对应物按 §7.2 全部落位或有记录的取舍（Executor 循环体不移植=D1、LiveContextTrimmer 组件不移植=D9、WorkingMemory 精简见执行期修订 1）
+- [x] CI 双 OS 矩阵（ubuntu/windows × 3.11/3.12）+ 覆盖率门禁生效（编排层 ≥90% 实测 95.4%、全局 ≥75% 实测 80.2%）
+- [ ] Layer 7 真实模型 8/8 + ablate 对照报告（手动，本地 OpenAI 兼容端点跑 `python -m agentmuster.eval.layer7_multiagent`）
+- [x] README / ARCHITECTURE 呈现"单 Agent 底座 / 多智能体编排 / 七层评测"三层结构
+- [x] 溯源：CHANGELOG 记录 miniMaster 快照 `24f4247` 与各批次移植范围
+- [ ] GitHub 远端创建与推送（miniMaster 快照 + AgentMuster 主仓,待定方式）

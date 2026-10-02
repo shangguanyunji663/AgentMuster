@@ -4,9 +4,9 @@
 
 **面向代码仓库长链路任务的本地 Agent 运行底座**
 
-[![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org)
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-272%20passed-brightgreen)](tests/)
+[![Tests](https://img.shields.io/badge/tests-348%20passed-brightgreen)](tests/)
 [![Core deps](https://img.shields.io/badge/core%20deps-PyYAML%20only-blue)](requirements.txt)
 [![Offline](https://img.shields.io/badge/offline-ready-blueviolet)](#评测体系与实测结果)
 [![Version](https://img.shields.io/badge/version-0.1.0-lightgrey)](CHANGELOG.md)
@@ -24,11 +24,18 @@
 | 上下文膨胀，长任务中途爆窗 | 软预算触发折叠 + 硬限额强制截断，三层裁剪策略链式降级 | `agentmuster/context/` |
 | 同一文件反复读，token 白烧 | 任务 / 文件 / 关联三层结构化记忆，follow-up 自动注入父任务摘要 | `agentmuster/memory/` |
 | 中断即重来，进度全丢 | Checkpoint / Resume + 工作区 SHA256 指纹漂移识别 | `agentmuster/checkpoint/` |
-| 工具乱跑、路径逃逸、密钥进日志 | Schema 校验 → 路径沙箱 → Shell 黑白名单 → 去重 → HITL 审批 → 脱敏，六道防线 | `agentmuster/safety/` |
+| 工具乱跑、路径逃逸、密钥进日志 | Schema 校验 → 路径沙箱 → Shell 黑白名单 → 去重 → 重复/振荡 Guard → HITL 审批 → 脱敏，七道防线 + 动作白名单 | `agentmuster/safety/` |
 | 跑完不知道发生了什么 | 轨迹 / 检查点 / 指标三类运行工件 + 链路追踪 + 可复现评测报告 | `agentmuster/artifacts.py`、`agentmuster/observability/` |
-| 分不清「系统不行」还是「模型不行」 | 裸模型基线对照：`single_shot` / `naive_loop` / `harness` 三臂同任务集对比 | `agentmuster/eval/raw_baseline.py` |
+| 复杂目标单 Agent 一把梭容易失控 | Planner-Executor-Validator 多轮闭环：Completion Checklist 客观验收、缺失项精确回流重规划、失败即时重试并注入教训、全局预算熔断 | `agentmuster/agent/orchestrator.py`、`agentmuster/orchestrator/` |
+| 分不清「系统不行」还是「模型不行」 | 裸模型基线对照：`single_shot` / `naive_loop` / `harness` 三臂同任务集对比 + Layer 7 多智能体基准与机制消融 | `agentmuster/eval/raw_baseline.py`、`agentmuster/eval/layer7_multiagent.py` |
 
-**设计取向**：核心运行时只依赖 PyYAML；全部增强能力（Web API、向量检索、OTel 桥接）均为可选依赖组，默认关闭或零依赖降级，保证任意新机器上 `pip install -e .` 之后测试与评测**全离线可跑**。
+**设计取向**：核心运行时只依赖 PyYAML；全部增强能力（Web API、向量检索、OTel 桥接、MCP 外部工具、真实模型接入）均为可选依赖组或零依赖实现，默认关闭或零依赖降级，保证任意新机器上 `pip install -e .` 之后测试与评测**全离线可跑**。
+
+**演进说明**：本项目由两个同源项目合并演进而来——单 Agent 运行底座（原 MyCoder）吸收了多智能体角色闭环框架（原 miniMaster）的 Planner-Executor-Validator 编排层、行为安全防线与协议兼容工程，合并决策与接口对齐记录见 [`docs/MERGE_DESIGN.md`](docs/MERGE_DESIGN.md)。合并后的三层结构：
+
+1. **单 Agent 底座**（`agentmuster/agent/`）：上下文治理 / 结构化记忆 / Checkpoint / 七道安全防线 / 工件系统；
+2. **多智能体编排**（`agentmuster/orchestrator/` + `agent/agent/orchestrator.py`）：任务状态机 + 多轮闭环 + Retry Archive + 编排级断点续跑；
+3. **七层评测**（`agentmuster/eval/`）：Layer 1-6b 离线与三臂对照 + Layer 7 多智能体端到端基准（客观检查器 + 机制消融）。
 
 ---
 

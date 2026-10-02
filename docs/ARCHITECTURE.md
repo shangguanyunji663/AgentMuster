@@ -4,6 +4,12 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
+│              Orchestrator(多智能体多轮闭环,可选增强)             │
+│   Planner ─→ 工作队列(就绪任务并行,共享交付工作区) ─→ Validator  │
+│        ↑  Completion Checklist 验收 / missing 回流重规划 /       │
+│        └── Retry Archive 教训注入 / 预算熔断 / 编排级 resume      │
+│                        每子任务 = 一个独立 AgentHarness           │
+├─────────────────────────────────────────────────────────────────┤
 │                      AgentHarness (主循环)                       │
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐        │
 │  │  Model   │  │  Tools   │  │ Context  │  │  Memory  │        │
@@ -12,7 +18,8 @@
 │       │              │              │              │              │
 │  ┌────┴──────────────┴──────────────┴──────────────┴─────┐      │
 │  │                    SafetyGuard                         │      │
-│  │  (参数校验 / 工作区隔离 / HITL / 去重 / 脱敏)         │      │
+│  │  (动作白名单 / 参数校验 / 工作区隔离 / shell 名单 /    │      │
+│  │   去重 / 重复振荡 Guard / HITL / 脱敏)                │      │
 │  └───────────────────────────────────────────────────────┘      │
 │                                                                  │
 │  ┌──────────────────┐  ┌──────────────────┐                     │
@@ -23,10 +30,24 @@
 │  ┌─────────────── 横切层(对 Harness 零侵入)─────────────┐      │
 │  │ Observability(Tracer/trace.json + on_event 事件总线)  │      │
 │  │ API(fastapi_server + event_bus 的 SSE 事件流)         │      │
-│  │ Orchestrator(把目标拆为独立子 Harness 并行编排)       │      │
 │  └────────────────────────────────────────────────────────┘      │
 └─────────────────────────────────────────────────────────────────┘
 ```
+
+## 多智能体编排层(批次①-④,自 miniMaster 合并)
+
+- **角色闭环**：`Planner` 把目标拆为带 `done_criteria`/`depends_on` 的任务并生成 Completion
+  Checklist；每轮由依赖就绪的任务并行执行（共享交付工作区，compound 目标可用先任务产出），
+  `Validator` 逐项验收，`missing_requirements` 精确回流触发增量重规划。
+- **纠错闭环**：任务状态机迁移表硬约束（非法迁移抛 `IllegalTransitionError`）；失败任务轮内
+  即时重入队，Retry Archive 把失败轨迹压缩为教训注入重试上下文；控制工具 `submit_result`/
+  `request_block` 让执行者显式收口或申报阻塞；全局 token 预算熔断。
+- **可恢复**：每任务/每轮收口写编排快照，`Orchestrator.resume(task_id)` 断点续跑
+  （validated=True 从下一轮继续，False 重做本轮且 DONE 任务不重跑）。
+- **确定性退化**：`orchestrator.planner_mode=deterministic`（默认）零 LLM 单任务单轮，
+  保持单 Agent 底座的既有语义；LLM 角色闭环经 `--planner llm` 或配置启用。
+- **评测背书**：Layer 7（`eval/layer7_multiagent.py`）8 任务客观检查器 + `--ablate
+  guard/retry/budget/validator` 机制消融，量化编排层各机制的贡献。
 
 ## 核心设计原则
 
