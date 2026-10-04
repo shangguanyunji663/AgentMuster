@@ -4,9 +4,12 @@
 > 本文档是改造的单一事实来源（Single Source of Truth）：每个 Phase 完成后更新状态与结论，
 > 配合 `CHANGELOG.md`（与 git 提交一一对应）构成完整的工程决策记录。
 >
-> **状态注记（2026-08-28）**：文中提及的 GitHub Actions CI 已移除（远程质量门暂时下线）；
-> 相关表述为历史过程记录。当前质量门以本地 `ruff check` / `mypy` / `pytest` 为准，
-> 命令见 `docs/TESTING.md` 的「质量门(本地执行)」一节。
+> **状态注记（更新于 2026-10）**：文中提及的 GitHub Actions CI 曾于 2026-08-28 移除（远程质量门暂时下线），
+> 但已在后续批次⑤ **重新恢复**——`.github/workflows/ci.yml` 双 OS 矩阵（ubuntu/windows × Python 3.11/3.12）
+> + 覆盖率门禁（全局 ≥75%、编排层 ≥90%）已生效。当前 CI 与本地 `ruff check` / `mypy` / `pytest` 并行把关，
+> 命令见 `docs/TESTING.md` 的「质量门(CI + 本地执行)」一节。
+> 此外，Phase 1 的"3.10–3.12 矩阵"与 Phase 6 的"完全独立子工作区"均为历史过程记录，最终形态（3.11/3.12 矩阵；
+> 同一编排内子任务共享交付工作区）以本文档结果记录与 `CHANGELOG.md` 为准。
 
 ## 0. 背景评估（改造前的差距分析）
 
@@ -14,7 +17,7 @@
 
 - 分层解耦架构：models / tools / context / memory / checkpoint / safety / eval 七层正交；
 - 确定性工程哲学：MockBackend 脚本化 + 五层评测（区分「模型能力」与「系统能力」）；
-- 改造前已有 206 项 pytest 基线；本轮扩展后为 258 个收集用例（17 个测试文件；2026-08-27 Web 后端切换迭代后增至 262 项；2026-08-28 Layer 6b 裸基线对照迭代后增至 268 项；2026-08-29 空终答重问迭代后达 272 项 / 18 个文件）；安全链完整（schema 校验 → 路径沙箱 → shell 白/黑名单 → 去重 → HITL → 脱敏）。
+- 改造前已有 206 项 pytest 基线；本轮扩展后为 258 个收集用例（17 个测试文件；2026-08-27 Web 后端切换迭代后增至 262 项；2026-08-28 Layer 6b 裸基线对照迭代后增至 268 项；2026-08-29 空终答重问迭代后达 272 项 / 18 个文件）；后续合并 miniMaster 角色层（批次①-⑤）与 Layer 7 实测后达 **349 项 / 31 个文件**（见 `CHANGELOG.md`）。安全链完整（schema 校验 → 路径沙箱 → shell 白/黑名单 → 去重 → 重复振荡 Guard → HITL → 脱敏）。
 
 面试官深挖会暴露的三类问题（本计划要解决）：
 
@@ -35,7 +38,7 @@
 3. `agentmuster/models/local_openai.py`：URL 拼接收敛为单一清晰逻辑。
 4. `agentmuster/eval/runner.py` 晦涩赋值写法、`agentmuster/memory/store.py` 方法内 import 提升至模块顶部。
 5. README 去除个人机器路径（`D:\ANACONDA\...`），命令通用化。
-6. pyproject 增加 ruff + mypy 配置并修复全部告警；新增 GitHub Actions CI（3.10–3.12 矩阵：lint → typecheck → pytest + coverage）。
+6. pyproject 增加 ruff + mypy 配置并修复全部告警；新增 GitHub Actions CI（当时为 3.10–3.12 矩阵：lint → typecheck → pytest + coverage；该 CI 后经移除与恢复，最终形态为批次⑤ 的 3.11/3.12 双 OS 矩阵）。
 
 验收：206 项既有测试全绿；`ruff check` 与 `mypy` 零告警；`python -m agentmuster run --backend local_openai` 能真实发起后端调用（无本地服务时报错清晰）。
 
@@ -95,7 +98,7 @@
 - CLI `cmd_run` 改用 `_make_backend()`，任务文件带 `script` 走 Mock、否则走 config 真实后端；
   新增 `--backend` 覆盖；删除恒 `None` 表达式与 `or True` 永真条件。
 - `local_openai.py` URL 拼接收敛；`pyproject` 增加 ruff + mypy 配置并接入 GitHub Actions
-  CI（3.10–3.12 矩阵：lint → typecheck → pytest + coverage）。
+  CI（当时为 3.10–3.12 矩阵：lint → typecheck → pytest + coverage；最终形态见批次⑤ 3.11/3.12 双 OS 矩阵）。
 - 验收：206 项既有测试全绿；`ruff` / `mypy` 零告警。
 
 ### Phase 2（P1 真实模型链路强化）—— 已完成
@@ -134,16 +137,16 @@
 
 ### Phase 6（P2.3 子代理编排）—— 已完成
 - 新增 `agent/orchestrator.py`：`Orchestrator` 由 `Planner`（默认确定性退化分解，可注入 LLM JSON
-  分解）产出子任务；各子任务由**完全独立工作区 / 记忆 / 断点 / 工件根**的子 `AgentHarness`
-  经 `ThreadPoolExecutor` 并行执行（互不污染）；汇总 `aggregate()`；单个子任务失败标记 `failed`
-  不阻断整体（部分降级）；产出 `orchestration.json`；通过 `on_event` 发出
-  `orchestration_start / subtask_end / orchestration_end`。
+  分解）产出子任务；各子任务由子 `AgentHarness` 经 `ThreadPoolExecutor` 并行执行（记忆 / 断点 / 工件根
+  互不污染，同一编排内共享交付工作区；该共享语义于后续批次④ 修正，见 CHANGELOG）；汇总 `aggregate()`；
+  单个子任务失败标记 `failed` 不阻断整体（部分降级）；产出 `orchestration.json`；通过 `on_event` 发出
+  编排事件（批次① 后扩展为 orchestration_plan / round_end / validated / replan 等全套）。
 - `config` 增加 `agent.orchestrator.{enabled,max_workers}`（默认关闭）。
 - 验收：pytest 覆盖编排正确性、并行执行、失败降级、事件发射；现有 harness 测试不回归。
   **已通过 `tests/test_orchestrator.py`。**
 
 ### Phase 7（收尾）—— 已完成
-- 全量 `pytest` 仍全绿（共 **206 项 / 16 个测试文件**：原 162 既有 + 本轮新增 observability / vectors / api / orchestrator / cost / backendeval 共 44 项）；
+- 全量 `pytest` 仍全绿（截至 Phase 7 收尾为 **206 项 / 16 个测试文件**：原 162 既有 + 本轮新增 observability / vectors / api / orchestrator / cost / backendeval 共 44 项；后续合并 miniMaster 角色层与 Layer 7 实测后增至 **349 项 / 31 个文件**，见 `CHANGELOG.md`）；
 - `pyproject` optional-dependencies 分组：`api` / `vector` / `otel` / `dev`，核心保持零依赖；
 - README / ARCHITECTURE / TESTING / OUTLINE / FINAL_SUMMARY / LEARNING_GUIDE 同步新能力；CHANGELOG 追加本轮 conventional commits；
 - 性能测试不回归；

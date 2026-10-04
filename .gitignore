@@ -38,6 +38,7 @@ artifacts/
 # ---- 6. AI 助手与本地工具的会话/扫描状态(ZCode 计划、WorkBuddy 记忆、Mimosa 安全扫描约百 MB 快照) ----
 .zcode/
 .workbuddy/
+.workbuddy-ai/
 .mimosa/
 
 # ---- 7. IDE / 编辑器个人配置(VS Code、JetBrains、vim) ----

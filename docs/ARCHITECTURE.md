@@ -56,7 +56,7 @@
 - **工具层**: Tool 基类 + Registry,7 类工具独立实现,安全边界由 SafetyGuard 统一处理
 - **上下文层**: ContextManager 负责组装与裁剪,与业务逻辑正交
 - **记忆层**: StructuredMemory 三层存储,与工具/上下文解耦
-- **安全层**: SafetyGuard 独立于工具实现,提供校验/隔离/审批/去重/脱敏
+- **安全层**: SafetyGuard 独立于工具实现,提供动作白名单/校验/隔离/审批/去重/重复振荡 Guard/脱敏
 
 ### 2. 确定性优先
 - MockBackend 脚本化:同一输入必得同一输出(评测可复现)
@@ -139,7 +139,7 @@ RunResult + Artifacts
 
 ### SafetyGuard
 - validate_params(schema, params): 参数校验
-- check(tool, params): 完整安全链(校验→隔离→shell策略→去重→HITL)
+- check(tool, params, allowed_tools=None): 完整安全链(动作白名单→校验→隔离→shell策略→去重→重复/振荡 Guard→HITL)
 - record_executed(tool, params, output): 登记到去重缓存
 - Redactor: 敏感信息脱敏
 
@@ -189,7 +189,7 @@ RunResult + Artifacts
 - 空终答温和重问: 模型返回"无工具调用且无内容"的空转回复时,注入用户提醒继续循环(`harness.empty_answer_nudges`,默认 1,0 = 关闭);轮结构新增可选 `user` 位,checkpoint 序列化向后兼容
 - _execute_tools(): 安全链 + 执行 + 脱敏 + 记忆沉淀
 - _checkpoint(): 周期性/裁剪前/中断时保存断点
-- `build(config, backend, approver, on_event)`: 工厂装配;若传入 `on_event`(如 API 的 SSE EventBus),则默认 Tracer 与调用方回调**同时**收到语义事件
+- `build(config, backend=None, workspace_root=None, memory_root=None, approver=None, on_event=None)`: 工厂装配;若传入 `on_event`(如 API 的 SSE EventBus),则默认 Tracer 与调用方回调**同时**收到语义事件
 
 ### Observability / Tracer
 - `Tracer(artifacts_root, enabled)`: 作为 `on_event` 消费者重建 span 生命周期
@@ -211,12 +211,14 @@ RunResult + Artifacts
 - 监控页通过 EventSource 订阅 SSE;标准库实现不提供 SSE 时,前端退化为状态轮询。
 - 标准库 `server.py` 保持零依赖实现;`serve --impl stdlib|fastapi` 切换
 
-### Orchestrator(子代理编排)
-- `Orchestrator(config, planner, backend_factory, max_workers, on_event)`
-- `decompose(goal)`: Planner 产出子任务列表(默认确定性退化:整体作为一个子任务;可注入 LLM planner 做智能分解)
-- `run(goal)`: 各子任务由**完全独立工作区/记忆/断点/工件根**的子 `AgentHarness` 经 `ThreadPoolExecutor` 并行执行
-- 单个子任务失败标记 `failed` 不阻断整体(部分降级);汇总 `aggregate()`;产出 `orchestration.json`
-- 通过 `on_event` 发出 orchestration_start / subtask_end / orchestration_end
+### Orchestrator(多智能体编排)
+- `Orchestrator(config, planner, validator, backend_factory, max_workers, on_event)`
+- `run(goal, task_id=None)`: Planner 产出带 `done_criteria` / `depends_on` 的子任务与 Completion Checklist;每轮由依赖就绪的任务经 `ThreadPoolExecutor` 并行执行,`Validator` 按 Checklist 逐项验收,`missing_requirements` 精确回流触发增量重规划
+- 同一编排内的子任务**共享交付工作区**(`.orch_<orch_id>/ws`,支撑 dep-chain 类复合目标),记忆 / 断点 / 工件根仍按子任务隔离;跨编排完全隔离
+- 单个子任务失败标记 `failed` 不阻断整体(部分降级),轮内即时重入队并由 Retry Archive 注入教训;汇总 `aggregate()`;产出 `orchestration.json`
+- `resume(task_id)`: 编排级断点续跑(validated=True 从下一轮继续,False 重做本轮且 DONE 任务不重跑)
+- 确定性退化:未配置 LLM planner(默认 `orchestrator.planner_mode=deterministic`)时单任务单轮自动验收,保持单 Agent 底座既有语义
+- 通过 `on_event` 发出 orchestration_start / orchestration_plan / round_start / round_end / validated / replan / subtask_start / subtask_end / subtask_blocked / task_retry_scheduled / budget_exceeded / deps_invalid / orchestration_end
 
 ## 巨型测试文件
 
@@ -228,7 +230,7 @@ RunResult + Artifacts
 - **数据结构**: ListNode/LinkedList/TreeNode/BinaryTree/TrieNode/Trie/Graph (含 BFS/DFS/最短路径/环检测)
 - **20 个类**: 带数据存储/统计/__repr__ 的通用容器类
 
-生成方式: `python generate_test_file.py`
+生成方式: 该文件已随仓库提交(4669 行 / ~143KB);原生成脚本 `generate_test_file.py` 已作为死代码在批次③ 删除,如需变更内容请直接编辑文件。
 
 ## 扩展点
 

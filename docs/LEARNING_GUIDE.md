@@ -2,7 +2,7 @@
 
 > 本文档按照"如果你要从头写这个项目,你会怎么思考和编码"的顺序,逐模块拆解每一行代码的设计意图与实现细节。它同时具备四种特性:**详细**(完整覆盖核心概念与背景知识,不跳步)、**深入**(讲清每个设计背后的"为什么")、**易上手**(零基础视角,每章配可运行示例与练习)、**易检索**(结构统一、术语一致、附录速查)。建议按顺序阅读,每个模块读完后对照源码走一遍。
 >
-> 本指南基于仓库当前状态:26 项手写 benchmark + 42 项冻结基准、82 条检索查询、**272 项 pytest 测试**(18 个测试文件)。文中所有"动手示例"均在项目内置 `.conda` 环境中实际运行验证过,标注的输出为真实输出。
+> 本指南基于仓库当前状态:26 项手写 benchmark + 42 项冻结基准、82 条检索查询、**349 项 pytest 测试**(31 个测试文件)。文中所有"动手示例"均在项目内置 `.conda` 环境中实际运行验证过,标注的输出为真实输出。
 
 ---
 
@@ -56,7 +56,7 @@
 | **P0 跑起来** | 完全零基础,只想看到它能运行 | 跑通测试/Demo/评测,建立直观感受 | 第 0.1~0.3 节 → 第 1 章 → 第 2 章 | ~1 小时 | 浏览器里看到监控页出现一次任务运行 |
 | **P1 会使用** | 会 Python,想理解系统怎么工作 | 能解释每个模块"做什么、为什么" | P0 + 第 3 章 → 第 1/5/8 站精读(第 4/5/8、11 章)→ 附录 B/C | ~半天 | 能向别人画出主循环流程图 |
 | **P2 懂设计** | 想吃透设计思路 | 十站全部走读,完成每站练习 | P1 + 十站全序 + 两个插站(第 4~15 章)→ 第 16 章 | 2~3 天 | 完成全部"进阶练习" |
-| **P3 能贡献** | 要改源码/做扩展/做研究 | 能安全地修改并通过全部测试 | P2 + 附录 D 测试索引 → 每站测试文件对照 → 第 17 章进阶任务 | ~1 周 | 独立完成第 17 章的任一扩展任务且 272 项测试全绿 |
+| **P3 能贡献** | 要改源码/做扩展/做研究 | 能安全地修改并通过全部测试 | P2 + 附录 D 测试索引 → 每站测试文件对照 → 第 17 章进阶任务 | ~1 周 | 独立完成第 17 章的任一扩展任务且 349 项测试全绿 |
 
 > **P0 读者注意**:你不需要读完整个文档。第 0 章只读 0.1~0.3 节即可上手;其余章节可以在你产生"这是怎么做到的?"疑问时再回来按站查阅——本文档同时是一份**按模块组织的参考手册**。
 
@@ -108,7 +108,7 @@ AgentMuster 的定位:**不训练模型、不调用云端 API**,而是围绕任�
 
 **① Token(词元)。** LLM 处理文本的最小单位,一个英文单词约 1~2 个 token,一个汉字通常恰好 1 个 token。模型按 token 计费、按 token 限制上下文。→ AgentMuster 用启发式估算(中文按字、英文 4 字符≈1 token),见第 5 站 tokens.py。
 
-**② 上下文窗口(context window)与预算。** 模型一次能"看见"的全部文本上限。超窗直接报错;接近上限时质量也会劣化。→ AgentMuster 用两个配置表达:`context.budget_tokens`(软预算,4000,超了就触发折叠)与 `context.hard_limit_tokens`(硬上限,6000,任何情况下不得越过),见第 5 站。
+**② 上下文窗口(context window)与预算。** 模型一次能"看见"的全部文本上限。超窗直接报错;接近上限时质量也会劣化。→ AgentMuster 用 `context.hard_limit_tokens`(硬上限,6000,任何情况下不得越过)配合 `context.keep_last_turns`(保留最近 N 轮)来表达;裁剪触发由二者驱动(`context.budget_tokens` 只是评测运行器写入的软预算键,不在内置 DEFAULT、不参与裁剪触发),见第 5 站。
 
 **③ System Prompt(系统提示)。** 放在消息列表最前面、定义 Agent 身份与规则的消息。→ `ContextManager` 内置 `SYSTEM_PROMPT`,规定"路径必须是工作区相对路径""优先用记忆避免重复读文件"等行为准则。
 
@@ -151,9 +151,9 @@ AgentMuster 的定位:**不训练模型、不调用云端 API**,而是围绕任�
 
 | 项目 | 说明 |
 |------|------|
-| 环境位置 | `D:\PythonProject\agentmuster\.conda\`(相对仓库即 `<repo>\.conda`) |
+| 环境位置 | 仓库根目录下的 `.conda\`(即 `<repo>\.conda`) |
 | 管理方式 | Anaconda 以**路径(prefix)**方式管理,环境名显示为完整路径 |
-| Python 版本 | 3.11(pyproject 声明兼容 3.10+) |
+| Python 版本 | 3.11(`pyproject` 声明 `requires-python>=3.11`) |
 | 预装内容 | 全部运行时依赖 + dev/api/vector 可选组 + 项目本体可编辑安装(`pip install -e .`) |
 | 版本控制 | `.conda/` 已加入 .gitignore,**不入库** |
 
@@ -161,7 +161,7 @@ AgentMuster 的定位:**不训练模型、不调用云端 API**,而是围绕任�
 
 ```bash
 # 1) 激活后使用 python(PowerShell/cmd)
-conda activate D:\PythonProject\agentmuster\.conda
+conda activate <repo>\.conda
 
 # 2) Git Bash 中激活
 source .conda/Scripts/activate
@@ -175,14 +175,14 @@ source .conda/Scripts/activate
 | 操作 | Git Bash | PowerShell / cmd |
 |------|----------|------------------|
 | 直接跑 | `.conda/python.exe -m pytest tests/` | `.conda\python.exe -m pytest tests/` |
-| 激活 | `source .conda/Scripts/activate` | `conda activate D:\PythonProject\agentmuster\.conda` |
+| 激活 | `source .conda/Scripts/activate` | `conda activate <repo>\.conda` |
 | 路径分隔 | `/`(正斜杠) | `\`(反斜杠) |
 
 ### 1.2 验证环境可用
 
 ```bash
 .conda/python.exe --version                       # 应输出 Python 3.11.x
-.conda/python.exe -m pytest tests/ --collect-only -q | tail -3   # 应列出 272 个用例
+.conda/python.exe -m pytest tests/ --collect-only -q | tail -3   # 应列出 349 个用例
 .conda/python.exe -m agentmuster doctor               # 内置环境自检:打印配置/依赖诊断
 ```
 
@@ -202,8 +202,8 @@ conda env create -p .conda -f environment.yml
 | `ModuleNotFoundError: agentmuster` | 用了别的 Python,或不在仓库根目录 | 确认用 `.conda/python.exe`,且 `cd` 到仓库根再执行 |
 | `pytest: command not found` | 未激活环境 | 用 `.conda/python.exe -m pytest` 形式 |
 | 中文输出乱码 | Windows 控制台默认 GBK | 设置环境变量 `PYTHONIOENCODING=utf-8`,或用 Git Bash / Windows Terminal |
-| 路径含中文/空格导致奇怪报错 | 部分工具链对非 ASCII 路径不友好 | 把仓库放到纯英文路径(如 `D:\PythonProject\agentmuster`) |
-| pytest 收集数不是 272 | 环境不完整或收集到旧缓存 | 删除 `tests/__pycache__`、`.pytest_cache` 后重试;必要时重建环境 |
+| 路径含中文/空格导致奇怪报错 | 部分工具链对非 ASCII 路径不友好 | 把仓库放到纯英文路径(如 `D:\work\agentmuster`) |
+| pytest 收集数不是 349 | 环境不完整或收集到旧缓存 | 删除 `tests/__pycache__`、`.pytest_cache` 后重试;必要时重建环境 |
 | `.conda` 目录被杀毒软件锁定导致安装失败 | 实时防护拦截 | 将仓库目录加入白名单后重建 |
 
 **⚠ 易错点**:CLI(`python -m agentmuster ...`)**默认只加载内置默认值,不会自动读 `config/default.yaml`**;要用本文件的配置,必须显式传 `--config config/default.yaml`(见 `agentmuster/cli.py` 的 `_build_config`)。这是"我明明改了配置怎么没生效"的头号原因。
@@ -232,7 +232,7 @@ conda env create -p .conda -f environment.yml
 .conda/python.exe -m pytest tests/
 ```
 
-预期:全部通过(272 项收集,含 8 项性能测试),末尾形如 `===== 270 passed, 2 skipped in XXs =====`(2 个 fastembed 可选用例离线运行期跳过,联网下载 bge-small 后 272 全绿)。**习惯:以后任何改动之前先跑一遍,留下绿色基线;改动之后再跑,红了就是你改坏的。**
+预期:全部通过(349 项收集,含 8 项性能测试),末尾形如 `===== 347 passed, 2 skipped in XXs =====`(2 个 fastembed 可选用例离线运行期跳过,联网下载 bge-small 后 349 全绿)。**习惯:以后任何改动之前先跑一遍,留下绿色基线;改动之后再跑,红了就是你改坏的。**
 
 只想快速验证某个模块?指定文件即可:
 
@@ -286,7 +286,7 @@ curl http://127.0.0.1:8910/health        # {"service":"agentmuster","version":"0
 
 | 你看到的现象 | 背后的机制 | 深入阅读 |
 |--------------|------------|----------|
-| 272 项测试全绿 | 每个模块都有独立单测,安全边界参数化展开到 70 项 | 附录 D |
+| 349 项测试全绿 | 每个模块都有独立单测,安全边界参数化展开到 70 项 | 附录 D |
 | Turn 15 时 prompt 被压到 87% | 三层递进裁剪:折叠旧轮→丢弃陈旧轮→截断超长内容 | 第 5 站 |
 | 评测报告里"重读 2→0" | 结构化记忆 + follow-up 摘要注入 | 第 6 站 |
 | 恢复场景 10/10 漂移识别正确 | SHA-256 文件指纹逐文件精确比对 | 第 7 站 |
@@ -322,7 +322,7 @@ curl http://127.0.0.1:8910/health        # {"service":"agentmuster","version":"0
 第 3 站  工具框架    tools/base + sandbox + 7 个工具      — 让"手脚"可扩展
 第 4 站  安全边界    safety/guard + redact                — 在手脚上加"护栏"
 第 5 站  上下文治理  context/tokens + summarizer + manager — 让"记忆容量"不爆
-第 6 站  结构化记忆  memory/store + retriever             — 让"经验"可复用
+第 6 站  结构化记忆  memory/store + vectors             — 让"经验"可复用
 第 7 站  断点恢复    checkpoint/store + drift             — 让"中断"可续跑
 第 8 站  主循环      agent/harness                         — 把一切编排起来
 第 8b 站 插站·编排层 agent/orchestrator                    — 站在主循环之上做多任务并行
@@ -401,11 +401,12 @@ Config 对象(属性式访问)
 DEFAULT: dict[str, Any] = {
     "workspace": {"root": ".", "allow_absolute": False},
     "model": {"backend": "mock", ...},
-    "context": {"budget_tokens": 4000, "hard_limit_tokens": 6000, ...},
+    "context": {"hard_limit_tokens": 6000, "keep_last_turns": 6, ...},
     ...
 }
 ```
-- 内置默认值保证**任何缺失字段都有安全 fallback**——你永远不用担心 KeyError。注意默认值不是随便定的:`backend: "mock"` 保证开箱即用且离线;`allow_absolute: False` 默认收紧安全;`budget/hard` 4000/6000 的比例留出折叠后的缓冲空间。
+- 内置默认值保证**任何缺失字段都有安全 fallback**——你永远不用担心 KeyError。注意默认值不是随便定的:`backend: "mock"` 保证开箱即用且离线;`allow_absolute: False` 默认收紧安全;`hard_limit_tokens: 6000` 是裁剪链的绝对红线。
+- **注意**:`context.budget_tokens`(软预算)**不在内置 DEFAULT 里**——它是评测运行器 `EvalRunner._cfg_for()` 按层显式写入的键,且只被 stdlib `/health` 透出;**裁剪触发实际由 `keep_last_turns` 与 `hard_limit_tokens` 决定**(见第 5 站)。
 
 ```python
 def _deep_merge(base: dict, override: dict) -> dict:
@@ -417,7 +418,7 @@ def _deep_merge(base: dict, override: dict) -> dict:
             out[k] = copy.deepcopy(v)
     return out
 ```
-- **深合并**而非浅合并:用户只覆盖 `context.budget_tokens` 不会把 `context.hard_limit_tokens` 丢掉。浅合并(如 `dict.update`)会整节替换——用户 YAML 里写了两行 context 配置,其余 context 默认值就全没了,这类 bug 极难察觉。
+- **深合并**而非浅合并:用户只覆盖 `context.keep_last_turns` 不会把 `context.hard_limit_tokens` 丢掉。浅合并(如 `dict.update`)会整节替换——用户 YAML 里写了两行 context 配置,其余 context 默认值就全没了,这类 bug 极难察觉。
 - 两处 `deepcopy` 同样关键:保证返回的配置对象与传入的 `base`/`override` **不共享任何引用**,之后 `cfg.set()` 改动不会反向污染调用方的字典。
 
 ```python
@@ -430,8 +431,8 @@ class Config:
             node = node[part]
         return node
 ```
-- **点号路径访问**:`config.get("context.budget_tokens")` 比嵌套字典访问更简洁,全项目统一风格。注意实现细节:中途任何一层不是 dict 或键不存在,立即返回 default——**不会**因为中间节点缺失而抛异常。
-- 另有 `set(dotted, value)` 运行期覆盖(评测 A/B 对照就靠它临时改 budget)与 `model_backend` 便捷属性。
+- **点号路径访问**:`config.get("context.hard_limit_tokens")` 比嵌套字典访问更简洁,全项目统一风格。注意实现细节:中途任何一层不是 dict 或键不存在,立即返回 default——**不会**因为中间节点缺失而抛异常。
+- 另有 `set(dotted, value)` 运行期覆盖(评测 A/B 对照就靠它临时改预算)与 `model_backend` 便捷属性;`Config.load(path)` 是**类方法**,返回一个新 Config(从 YAML/JSON 深合并到 DEFAULT),不是原地修改。
 
 **【为什么】配置是"数据"不是"代码"。** 用字典 + 深合并就够,不需要 pydantic:项目的配置项不到 40 个,校验需求轻量(真正的"参数校验"发生在安全层对工具参数的检查上),引入 pydantic 换来的是类型安全但失去"YAML 即所得"的直观性,还多一个依赖。这是一个"够用即可"的典型取舍。
 
@@ -440,19 +441,19 @@ class Config:
 ```python
 from agentmuster.config import Config
 
-cfg = Config()                                  # 第 1 层:内置 DEFAULT
-print(cfg.get("context.budget_tokens"))         # 4000
-cfg.load("config/default.yaml")                 # 第 2 层:叠加用户 YAML(深合并)
-cfg.set("context.budget_tokens", 2000)          # 第 3 层:运行期覆盖
-print(cfg.get("context.budget_tokens"))         # 2000
-print(cfg.get("no.such.key", "fallback"))       # 缺失键 → 安全返回 fallback
-print(cfg.model_backend)                        # mock(便捷属性)
+cfg = Config()                                       # 第 1 层:内置 DEFAULT
+print(cfg.get("context.hard_limit_tokens"))          # 6000
+cfg = Config.load("config/default.yaml")             # 第 2 层:类方法,从 YAML 深合并到 DEFAULT
+cfg.set("context.hard_limit_tokens", 3000)           # 第 3 层:运行期覆盖
+print(cfg.get("context.hard_limit_tokens"))          # 3000
+print(cfg.get("no.such.key", "fallback"))            # 缺失键 → 安全返回 fallback
+print(cfg.model_backend)                             # mock(便捷属性)
 ```
 
 真实输出:
 ```
-4000
-2000
+6000
+3000
 fallback
 mock
 ```
@@ -821,7 +822,7 @@ print("裁剪信息:", ctx.last_prune)
 - ☑ 我能手写一个两轮 Mock 脚本并说清每轮消息流的形态;
 - ☑ 我知道为什么 `arguments` 全链路保持字符串。
 
-**对照测试**:`tests/test_models.py`(15 项:脚本推进/state 恢复)+ `tests/test_backend.py`(9 项:重试/退避/流式/usage,见 5.3 生产级增强走读)。
+**对照测试**:`tests/test_models.py`(16 项:脚本推进/state 恢复)+ `tests/test_backend.py`(9 项:重试/退避/流式/usage,见 5.3 生产级增强走读)。
 
 ---
 
@@ -1349,7 +1350,7 @@ print("策略:", ctx.last_prune.strategies)
 - 进阶:构造一个**单条**超长工具结果(如 50000 字符),观察 `truncate_long_content` 单独出现;再构造多条中等长度,观察另两档策略。理解"三种病、三种药"。
 
 **⚠ 易错点**
-- `budget_tokens`(4000,软预算)与 `hard_limit_tokens`(6000,硬上限)是**两个不同的旋钮**:前者决定何时开始折叠,后者是绝对红线。把前者调到大于后者不会报错,但治理行为会变得费解。
+- `keep_last_turns`(默认 6)与 `hard_limit_tokens`(默认 6000,硬上限)是**两个不同的旋钮**:前者决定保留最近多少轮原文、更早的折叠成摘要,后者是绝对红线(超了强制截断最长消息)。(`context.budget_tokens` 是评测运行器写入的软预算键,不在内置 DEFAULT、不参与裁剪触发;把保留轮数调得很大不会报错,但治理行为会变得费解。)
 - `assemble()` 返回的消息是**深拷贝**,你可以安全地修改它,但改动不会写回历史——也别指望"改一下返回值影响下一轮"。
 - token 估算是启发式:它保证单调与稳定,不保证等于真实模型的 tokenizer 结果;评测比较的是**相对变化**,不要拿估算值当计费依据。
 
@@ -1425,15 +1426,16 @@ def search(self, query, kind="all", mode=None):
     # mode: substring(默认)/ vector / hybrid,未指定时用配置
 ```
 
-### 9.2 retriever.py — 检索包装
+### 9.2 检索包装(已移除)—— `MemoryRetriever` 的归并
+
+> **代码现状**:原 `memory/retriever.py` 中的 `MemoryRetriever` / `should_re_read()` 已在批次③ 作为**零调用死代码删除**。其"摘要新鲜度"判断现由 `StructuredMemory.has_fresh_summary(path, digest)` 直接提供(`memory/store.py:162`),评测与调用方按需使用。
 
 ```python
-class MemoryRetriever:
-    def should_re_read(self, path, digest) -> bool:
-        """是否需要真正重读:已有与 digest 一致的摘要时返回 False"""
-        return not self.memory.has_fresh_summary(path, digest)
+# memory/store.py
+def has_fresh_summary(self, path: str, digest: str) -> bool:
+    """已有与 digest 一致的摘要时返回 True(即无需重读)。"""
 ```
-- 这是 harness 判断"要不要重读文件"的入口:**摘要的新鲜度 = 摘要对应的 SHA-256 与当前文件一致**
+- **摘要的新鲜度 = 摘要对应的 SHA-256 与当前文件一致**;不再有独立的 retriever 包装层。
 
 ### 9.3 vectors.py — 三种检索模式(可选深入)
 
@@ -1932,6 +1934,8 @@ artifacts: ['checkpoint.json', 'metrics.json', 'report.md', 'trace.json', 'traje
 > **本站学习目标**:理解编排器如何把"一个 Harness 跑一个任务"扩展成"多个 Harness 并行跑分解后的子任务";掌握完全隔离沙箱、部分降级与 orchestration.json 的设计。
 > **前置知识**:第 8 站全部内容(子任务就是一台完整 harness)。
 
+> **⚠ 代码现状(批次① 后)**:编排层已从"一次性分解 → 并行 → 聚合"升级为 **Planner-Executor-Validator 多轮闭环**。本章以下出现的 `SubTask` / `decompose()` / "完全隔离子工作区"描述的是**升级前的旧实现**,仅作演进对照阅读;当前代码为:`Task`(PENDING/RUNNING/DONE/FAILED/BLOCKED 五状态 + 迁移表硬约束)+ `PlannerRole`/`ValidatorRole` + Completion Checklist 双门验收 + Retry Archive + 全局预算熔断 + 编排级 `resume()`,且**同一编排内的子任务共享交付工作区**(`.orch_<orch_id>/ws`),记忆/断点/工件根仍按子任务隔离、跨编排完全隔离。完整新设计见 `docs/AgentMuster学习指南.md` 的编排章节与 `docs/MERGE_DESIGN.md`。
+
 ### 为什么需要编排层?
 
 主循环解决"一个任务怎么跑完",但真实需求常常是"一个**复杂目标**怎么拆开跑"——例如"实现认证模块并补齐测试"天然含两个可并行的子目标。编排层的设计立场:**复用而非重造**。每个子任务由一台**完整的、独立的** `AgentHarness` 执行(第 8 站的全部能力——上下文治理/记忆/断点/安全——自动继承),编排器只负责三件事:分解、并行调度、聚合。
@@ -2225,7 +2229,7 @@ Layer 5 检索: 混合检索召回率(substring/vector/hybrid, recall@3)
 在离线五层之上还有几个**按需运行**的 suite(需本地模型或下载,不进 pytest):
 - **Layer 6 真实任务评测**:Ollama(qwen3.5:2b)端到端执行 + 硬断言 + LLM-as-judge(`--suite real`,demo 脚本 `examples/real_model_demo.py`)
 - **Layer 6b 裸模型基线对照**:固定模型与 Layer 6 同一任务集,只改"有没有 harness"——`single_shot`(单次调用,无工具循环)与 `naive_loop`(朴素 tool-calling 循环,无治理/记忆/断点/安全链)两条裸基线臂;存在 Layer 6 报告时自动并排三臂对照,直接度量 harness 的增量价值(`--suite real_baseline`,配置节 `eval.real_baseline`,实现 `agentmuster/eval/raw_baseline.py`)
-- **Layer 7 嵌入器对照**:FastEmbed bge-small vs 默认 HashingEmbedder 的检索收益对比(`--suite embedder`)
+- **嵌入器对照(suite `embedder`)**:FastEmbed bge-small vs 默认 HashingEmbedder 的检索收益对比(`--suite embedder`)。注:代码注释(`eval/runner.py` 的 `layer_embedder_ab`)亦把它标为"Layer 7";文档统一以 **Layer 7 = 多智能体端到端基准**(`eval/layer7_multiagent.py`,8 任务 + `--ablate` 机制消融)为准,详见 `docs/AgentMuster学习指南.md` 与 `docs/TESTING.md` 的术语注。
 
 **核心理念**:用同一个确定性 mock 轨迹驱动,唯一变量是 harness 系统开关 → 测的是**系统能力**,不是模型能力。
 
@@ -2284,14 +2288,14 @@ def layer_retrieval(self):
     # 覆盖 exact(精确)/synonym(同义改写)/distractor(干扰)/empty(空结果) 四类
     for domain in bench["tasks"]:
         for q in domain["queries"]:
-            hyb = retriever.search(q["text"], mode="hybrid")
-            sub = retriever.search(q["text"], mode="substring")
+            hyb = mem.rank(q["q"], mode="hybrid", top_k=5, kind="file")
+            sub = mem.rank(q["q"], mode="substring", top_k=5, kind="file")
             # 统计 recall@1/3/5 与 MRR@5,按 kind 分别聚合
 ```
 
 - **对照变量**:同一查询,`mode="hybrid"`(向量 cosine + BM25 加权) vs `mode="substring"`(字面匹配)
 - **82 条实测结论**(默认零依赖 HashingEmbedder):分类通过率 exact 23/23、synonym 29/29、distractor 11/11、empty 19/19;平均 recall@3 substring=28% vs hybrid=63%;MRR@5 substring=0.44 vs hybrid=0.98 —— 字面匹配在"同义改写"场景大幅掉队,混合检索显著占优 → 实证记忆检索需要语义向量
-- **Layer 7 延伸对照**:`python -m agentmuster eval --suite embedder` 用 FastEmbed bge-small(真实神经嵌入,首次运行需下载模型)替换 HashingEmbedder 再跑同一数据集,量化升级收益
+- **嵌入器对照延伸**:`python -m agentmuster eval --suite embedder` 用 FastEmbed bge-small(真实神经嵌入,首次运行需下载模型)替换 HashingEmbedder 再跑同一数据集,量化升级收益
 
 **指标释义**(新手常混):
 - **recall@K**:前 K 条结果里"包含了应命中文档"的查询占比——考"找没找到";
@@ -2465,7 +2469,7 @@ def _execute_naive_call(tc, by_name, ctx) -> ToolCall:
 ```
 
 - `TaskEventBus`(api/event_bus.py)是事件中枢:harness 的 `on_event` 回调把事件推入总线,既驱动 SSE,也写入 `trace.json`
-- `--impl fastapi` 时由 `create_app()` 装配;默认仍走零依赖的 stdlib 实现(`pip install 'agentmuster-harness[api]'` 启用 FastAPI 路径)
+- `--impl fastapi` 时由 `create_app()` 装配;默认仍走零依赖的 stdlib 实现(`pip install 'agentmuster[api]'` 启用 FastAPI 路径)
 - **【为什么】两种实现并存?** stdlib 版保证"任何一台裸 Python 机器"都能起 API(零依赖哲学);FastAPI 版提供 SSE 与更丰富的接口。默认行为不因可选依赖存在与否而改变。
 
 **接口层内部走读:**
@@ -2532,25 +2536,33 @@ def _decide_backend(config, task_data) -> str:
 ### 15.3 测试套件
 
 ```
-test_models.py        (15)  MockBackend 脚本 progression/state恢复
+test_models.py        (16)  MockBackend 脚本 progression/state恢复
 test_tools.py         (21)  每种工具 execute + error case
 test_sandbox.py       (15)  路径逃逸拦截
-test_safety.py        (70)  参数校验/隔离/HITL/去重/脱敏(参数化边界展开)
+test_safety.py        (70)  参数校验/隔离/HITL/去重/振荡 Guard/脱敏(参数化边界展开)
+test_policy.py         (4)  ActionPolicy 角色动作白名单
+test_repeat_guard.py   (8)  RepeatedActionGuard 三重规则(连续/窗口/振荡)
+test_control_tools.py  (5)  submit_result/request_block 控制动作
 test_context.py       (19)  token估算/折叠/硬限额
+test_context_pairing.py(2)  裁剪不破坏 tool_calls/tool 配对
 test_memory.py        (19)  三层存储/去重/检索/持久化
+test_vectors.py       (11)  Embedding/VectorIndex/BM25/HybridRetriever
 test_checkpoint.py    (15)  断点/漂移
 test_harness.py       (18)  主循环/安全拦截/恢复/空终答温和重问
 test_backend.py        (9)  重试/退避/流式/usage 解析
+test_local_openai_protocol.py (6)  协议降级/截断自愈/文本动作解析
 test_cost.py           (5)  成本计量
 test_eval.py          (18)  五层评测+benchmark 数据完整性
+test_eval_layer7.py    (7)  Layer 7 客观检查器/消融映射/冒烟
 test_observability.py  (7)  Span/Tracer/trace.json/JSON 日志
-test_vectors.py       (11)  Embedding/VectorIndex/BM25/HybridRetriever
 test_api.py            (7)  FastAPI 路由/SSE/监控页/后端切换/双跑对照
-test_orchestrator.py   (4)  子任务分解/并行/降级
+test_mcp.py            (6)  真实子进程 MCP 往返
+test_orchestrator.py   (4)  编排(并行/降级/事件)
 test_real_eval.py      (4)  LLM-as-judge 解析/真实任务硬断言(离线部分)
 test_real_baseline.py  (7)  Layer 6b 裸基线两臂/工具白名单/三臂对照(离线部分)
 test_performance.py    (8)  压力测试(巨型文件)
-总计: 272 项(18 个测试文件,含参数化展开数量)
+tests/orchestrator/ (6 文件, 38)  状态机/Checklist/结构化/多轮闭环/角色记忆/Retry Archive
+总计: 349 项(31 个测试文件,含参数化展开数量)
 ```
 
 **【为什么】把安全边界参数化到 70 项?** 安全不是"测过一次"的事:路径逃逸有无数种写法(`..`、编码变换、绝对路径、盘符……)。参数化让"一个场景 = 一行参数",扩展新边界 case 只加一行。这也是给读者的示范:**你的新工具/新安全规则也应该这样展开测试**。
@@ -2605,13 +2617,13 @@ test_performance.py    (8)  压力测试(巨型文件)
 **⚠ 易错点**
 - `run` 的任务文件若不带 `script`,会按 `--backend`/配置装配后端(默认 mock,但无脚本的 Mock 只会直接终答)——想看真实模型行为要显式 `--backend local_openai` 且 Ollama 在线。
 - `serve` 起两个实例会端口冲突(默认 8910);改 `--port` 即可。
-- FastAPI 实现需要 api 依赖组;报 `fastapi 未安装` 时 `pip install 'agentmuster-harness[api]'` 或退回 stdlib。
+- FastAPI 实现需要 api 依赖组;报 `fastapi 未安装` 时 `pip install 'agentmuster[api]'` 或退回 stdlib。
 
 **☑ 自测清单**
 - ☑ 我能写出 8 个 CLI 子命令并用任务文件跑通 run;
 - ☑ 我能解释 stdlib/FastAPI 双实现共存的理由;
 - ☑ 我能说出 TaskEventBus 的 task_id 路由前提与 __done__ 哨兵的作用;
-- ☑ 我知道 272 项测试分布在哪些文件、安全测试为什么特别多。
+- ☑ 我知道 349 项测试分布在哪些文件、安全测试为什么特别多。
 
 **对照测试**:`tests/test_api.py`(7 项:health/监控页、SSE 事件流、后端字段校验、双跑对照)、`tests/test_observability.py`(见第 13 章)。
 
@@ -2642,9 +2654,9 @@ TaskInput → Harness.run() → [assemble → complete → check → execute →
 
 ## 第 17 章 读完之后:实操进阶路线
 
-读完本指南后,建议按以下顺序实操(均已预装,`conda activate D:\PythonProject\agentmuster\.conda` 后直接运行):
+读完本指南后,建议按以下顺序实操(均已预装,`conda activate <repo>\.conda` 后直接运行):
 
-1. `.conda/python.exe -m pytest tests/` — 全部测试通过(离线基线 270 passed + 2 skipped),建立"改动前基线"
+1. `.conda/python.exe -m pytest tests/` — 全部测试通过(离线基线 347 passed + 2 skipped),建立"改动前基线"
 2. `python examples/context_demo.py` — 直观看到上下文治理的压缩效果
 3. `python -m agentmuster eval --suite all --output .agentmuster/eval` — 生成五层评测报告并打开 report.md
 4. `python -m agentmuster serve` + 浏览器打开 http://127.0.0.1:8910/ — Vue 监控页提交任务,SSE 实时看事件流
@@ -2653,7 +2665,7 @@ TaskInput → Harness.run() → [assemble → complete → check → execute →
 
 ### P3 读者的扩展任务(任选其一,做完即"能贡献")
 
-- **任务 A(加工具)**:仿照 `tools/memory_tool.py` 实现一个 `PythonReplTool`(在工作区受限地执行一段 Python 并返回 stdout),注册进 `build_registry`,补 3 个单测(正常/异常/危险行为拦截),并保证 272+ 项测试全绿。
+- **任务 A(加工具)**:仿照 `tools/memory_tool.py` 实现一个 `PythonReplTool`(在工作区受限地执行一段 Python 并返回 stdout),注册进 `build_registry`,补 3 个单测(正常/异常/危险行为拦截),并保证 349+ 项测试全绿。
 - **任务 B(改策略)**:实现 `TopKSummarizer`(折叠时只保留最近 K 个工具结果、其余丢弃),通过 `context.summarizer` 配置接入,给 `test_context.py` 补 2 个用例。
 - **任务 C(做实验)**:把 Layer 2 的治理臂 budget 扫描成 [500, 1000, 2000, 4000],画一张"预算-压缩率-完成率"表,写一段 200 字结论。
 - **任务 D(接真模型)**:安装 Ollama + qwen3.5:2b,跑 `--suite real` 与 `--suite real_baseline`,对照第 0.2 节的三臂数字解释你的结果差异(模型方差是正常现象,如实记录)。
@@ -2694,7 +2706,7 @@ TaskInput → Harness.run() → [assemble → complete → check → execute →
 | 术语 | 定义 |
 |------|------|
 | 上下文治理 | 组装 + 裁剪 prompt 以满足预算的机制(ContextManager) |
-| 软预算 budget_tokens | 超过即触发折叠的阈值(默认 4000) |
+| 硬上限 hard_limit_tokens | 裁剪链的绝对红线(默认 6000);折叠触发由 keep_last_turns 驱动 |
 | 硬限额 hard_limit_tokens | 绝对红线(默认 6000),任何裁剪后都必须低于它 |
 | 三层裁剪 | fold_old_turns(折叠旧轮)→ drop_stale_turns(只留最近 1 轮)→ truncate_long_content(截断超长) |
 | PruneInfo | 一次 assemble 的裁剪档案:before/after tokens、pruned、strategies |
@@ -2760,7 +2772,7 @@ TaskInput → Harness.run() → [assemble → complete → check → execute →
 | `harness.max_steps` | `30` | 单任务最大步数 | 第 8 站 |
 | `harness.max_tool_calls_per_turn` | `8` | 单轮最多工具调用数 | 第 8 站 |
 | `harness.empty_answer_nudges` | `1` | 空终答温和重问次数(0=关) | 第 8 站 |
-| `context.budget_tokens` | `4000` | 软预算(触发折叠) | 第 5 站 |
+| `context.hard_limit_tokens` | `6000` | 硬上限(裁剪强制) | 第 5 站 |
 | `context.hard_limit_tokens` | `6000` | 硬上限 | 第 5 站 |
 | `context.keep_last_turns` | `6` | 保留最近 N 轮原文 | 第 5 站 |
 | `context.keep_last_tool_results` | `8` | 保留最近 N 条工具返回 | 第 5 站 |
@@ -2826,7 +2838,7 @@ TaskInput → Harness.run() → [assemble → complete → check → execute →
 
 ## 附录 D 测试与 benchmark 数据索引
 
-- 测试文件清单与数量:见第 15.3 节表(共 **272 项 / 18 文件**)。运行方式:`.conda/python.exe -m pytest tests/`。
+- 测试文件清单与数量:见第 15.3 节表(共 **349 项 / 31 文件**)。运行方式:`.conda/python.exe -m pytest tests/`。
 - benchmark 数据(`benchmarks/`):
 
 | 文件 | 内容 |
@@ -2848,7 +2860,7 @@ TaskInput → Harness.run() → [assemble → complete → check → execute →
   A:你在用别的解释器或不在仓库根目录。用 `.conda/python.exe` 并 `cd` 到仓库根。
 - **Q:Windows 控制台中文乱码?**
   A:`set PYTHONIOENCODING=utf-8`(cmd)或改用 Git Bash / Windows Terminal。
-- **Q:pytest 收集到的用例数和文档说的 272 不一样?**
+- **Q:pytest 收集到的用例数和文档说的 349 不一样?**
   A:清理 `__pycache__` 与 `.pytest_cache` 后重跑;确认测试文件没有缺失(见附录 D 清单)。
 
 **使用类**
@@ -2950,8 +2962,8 @@ TaskInput → Harness.run() → [assemble → complete → check → execute →
 - **编排层(插站)**:为什么子任务四根完全隔离?部分降级的取舍?默认退化分解的意义?
 - **可观测性(插站)**:7 类事件→span 树映射?哪些 span 的 duration_ms 是 0、为什么?埋点吞异常落实在哪两层?
 - **评测**:五层各自"固定/改变/度量"什么?recall@K 与 MRR?三臂对照(6b)的实验设计?_check_expect 的断言类型?
-- **收尾**:8 个 CLI 子命令?双 API 实现取舍?272 项测试的分布与安全参数化思想?
+- **收尾**:8 个 CLI 子命令?双 API 实现取舍?349 项测试的分布与安全参数化思想?
 
 ---
 
-> **版本与维护说明**:本文档与代码同步维护;文中数字(272 项测试、82 条查询、26+42 任务、三臂数据)为当前版本实测。若你按第 17 章做了扩展并改变了这些数字,请一并更新对应章节——文档与代码一样,也需要"测试"。
+> **版本与维护说明**:本文档与代码同步维护;文中数字(349 项测试、82 条查询、26+42 任务、三臂数据)为当前版本实测。若你按第 17 章做了扩展并改变了这些数字,请一并更新对应章节——文档与代码一样,也需要"测试"。

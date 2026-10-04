@@ -5,8 +5,8 @@
 本项目使用**项目内置的 Conda 独立环境** `.conda/`(Python 3.11,由 Anaconda 管理),已预装 pytest、pytest-cov 及全部可选依赖。运行测试无需任何安装步骤:
 
 ```bash
-# 方式一:激活内置环境后使用 python
-conda activate D:\PythonProject\agentmuster\.conda
+# 方式一:激活内置环境后使用 python(路径指向项目根目录下的 .conda)
+conda activate <项目根>/.conda
 python -m pytest tests/
 
 # 方式二:不激活,直接用项目内解释器
@@ -29,13 +29,16 @@ Layer 5: 检索召回评测        ─── 验证 82 条 exact/synonym/distrac
 Layer 6: 真实任务评测        ─── Ollama 端到端执行 + 硬断言 + LLM-as-judge
 Layer 6b: 裸模型基线对照     ─── 固定模型与任务集,只改"有没有 harness"
                                  (single_shot / naive_loop 两臂 + 三臂对照)
-Layer 7: 嵌入器对照          ─── HashingEmbedder vs FastEmbed bge-small(可选下载)
+Layer 7: 多智能体端到端基准  ─── 8 任务客观检查器 + --ablate 机制消融(eval/layer7_multiagent.py)
+嵌入器对照(suite `embedder`) ─── HashingEmbedder vs FastEmbed bge-small(可选下载)
 
 性能测试套件(独立于评测层):
   ─── 使用巨型文件(~4669行)对 8 个维度进行压力测试
 ```
 
-注意:Layer 6 / Layer 6b / Layer 7 属于**按需运行的评测 suite**(CLI `--suite real` / `--suite real_baseline` / `--suite embedder`,需要本地模型或联网下载)，不在 pytest 自动化范围内;pytest 中只包含它们的离线单测(`tests/test_real_eval.py`、`tests/test_real_baseline.py`)。
+> 术语注:`Layer 7` 指多智能体端到端基准(与 README、CHANGELOG 口径一致);`eval/runner.py` 中 `layer_embedder_ab()` 的代码注释亦标注为"Layer 7: 嵌入器对照",二者编号重叠——文档统一以"嵌入器对照(suite `embedder`)"称呼后者,避免歧义。
+
+注意:Layer 6 / Layer 6b / Layer 7 与嵌入器对照均属**按需运行的评测 suite**(CLI `--suite real` / `--suite real_baseline` / `--suite embedder`;Layer 7 为独立入口 `python -m agentmuster.eval.layer7_multiagent --suite full`)，需要本地模型或联网下载，不在 pytest 自动化范围内;pytest 中只包含它们的离线单测(`tests/test_real_eval.py`、`tests/test_real_baseline.py`、`tests/test_eval_layer7.py`)。
 
 ## 测试数据
 
@@ -66,14 +69,14 @@ Layer 7: 嵌入器对照          ─── HashingEmbedder vs FastEmbed bge-sma
 用于性能测试和上下文治理演示的自动生成文件：
 - **行数**: ~4669 行
 - **内容**: 500 个函数 + 排序算法(8 类) + 设计模式(11 类) + 数据结构(7 类: 链表/二叉树/Trie/图) + 20 个通用容器类
-- **已随仓库提交**;如需重新生成: `python generate_test_file.py`
+- **已随仓库提交**;原生成脚本 `generate_test_file.py` 已在批次③ 作为死代码删除,如需变更内容请直接编辑该文件
 
 ## 运行测试
 
 ```bash
 # 激活项目内置 .conda 环境(见文首),然后:
 
-# 运行完整测试套件(272 项)
+# 运行完整测试套件(349 项)
 python -m pytest tests/
 
 # 运行特定测试文件
@@ -288,9 +291,9 @@ python -m agentmuster eval --suite retrieval
 - ✅ harness: 主循环、安全拦截、去重、记忆、恢复、空终答温和重问
 - ✅ observability: Tracer/trace.json、on_event 埋点、JSON 结构化日志
 - ✅ api: FastAPI + SSE 事件流、EventBus、实时监控页、后端按请求切换与双跑对照(/api/compare)
-- ✅ orchestrator: 并行编排、失败降级、事件发射
+- ✅ orchestrator: 多轮闭环(Planner-Validator-Checklist)、任务状态机迁移约束、Retry Archive、编排 resume、并行与失败降级、事件发射
 - ✅ cost: 按价目表核算运行成本
-- ✅ eval: 五层评测、benchmark 数据完整性
+- ✅ eval: 五层评测 + Layer 6/6b/7 离线单测、benchmark 数据完整性
 - ✅ real_eval: LLM-as-judge 解析与真实任务硬断言(离线部分)
 - ✅ real_baseline: Layer 6b 裸基线两臂(single_shot 代码块提取/naive_loop 工具循环)、工具白名单、三臂对照(离线部分)
 - ✅ performance: 8 维度性能压力测试
@@ -299,26 +302,39 @@ python -m agentmuster eval --suite retrieval
 
 | 测试文件 | 用例数 | 测试内容 |
 |----------|--------|----------|
-| test_models.py | 15 | Mock 脚本 progression/state恢复, LocalOpenAI parse, 工具schema格式 |
+| test_models.py | 16 | Mock 脚本 progression/state恢复, LocalOpenAI parse, 工具schema格式 |
 | test_tools.py | 21 | 每种工具的 execute + error case + meta 字段 |
 | test_sandbox.py | 15 | PathEscapeError 拦截, rel兼容, snapshot指纹, list过滤隐藏 |
 | test_safety.py | 70 | validate_params(参数化组合)/escape/shell/HITL/dedup/redact 边界展开 |
 | test_context.py | 19 | CJK/ASCII token估算, fold/fold_to_1/enforce_budget, 深拷贝安全 deterministic replay, 摘要器 |
+| test_context_pairing.py | 2 | 裁剪不破坏 tool_calls/tool 配对(D9 不变量回归) |
 | test_memory.py | 19 | remember_task/update/parent_link, file_symbols/same_hash_skip, relation/link, search(3kind), followup_context, save_load_roundtrip, stats, disabled_no_save |
+| test_vectors.py | 11 | HashingEmbedder 确定性/归一化/余弦, BM25 排序, HybridRetriever α 加权, FastEmbed 可选 |
 | test_checkpoint.py | 15 | save_load_unicode/overwrite, exists/list_all, drift_compare(modified/added/deleted/empty), summary_text |
 | test_harness.py | 18 | run_flow(complete/artifacts/metrics/max_steps/unknown_tool/invalid_params), safety_intercept, dedup, resume_flow, 空终答重问(触发/预算耗尽/可关闭) |
 | test_backend.py | 9 | 重试/指数退避(429/5xx/Retry-After), usage 解析, 流式 complete_stream |
+| test_local_openai_protocol.py | 6 | HTTP 桩协议状态机: 降级/截断自愈/文本动作解析 |
 | test_cost.py | 5 | 按价目表核算 token 成本, 缺价目不计费 |
 | test_eval.py | 18 | benchmark_data, eval_layers(回归/上下文/记忆/恢复/检索), report_writing |
+| test_eval_layer7.py | 7 | Layer 7 客观检查器移植/消融映射/runner 冒烟 |
 | test_observability.py | 7 | Tracer span 层级/耗时, on_event 重建, JSON 日志可解析, trace.json 导出 |
-| test_vectors.py | 11 | HashingEmbedder 确定性/归一化/余弦, BM25 排序, HybridRetriever α 加权, FastEmbed 可选 |
 | test_api.py | 7 | health/Vue 监控页, 提交→SSE→完成事件, 未知任务 404, 后端字段非法 400, 显式 local_openai 工厂注入, script 锁定 Mock, 双跑对照两臂元数据 |
 | test_orchestrator.py | 4 | 并行编排, 失败降级(partial), 默认 planner 单子任务, 事件发射 |
 | test_real_eval.py | 4 | LLM-as-judge JSON 解析/兜底, 真实任务硬断言与 mock 跳过 |
 | test_real_baseline.py | 7 | Layer 6b 代码块 path 解析, single_shot 落盘断言, naive_loop 工具执行与指标, 工具白名单排除 shell/memory, 三臂对照 harness 参考, mock 优雅跳过, suite 不清空输出目录 |
+| test_policy.py | 4 | ActionPolicy 角色白名单/越权消息 |
+| test_repeat_guard.py | 8 | RepeatedActionGuard 三重规则(连续/窗口/振荡)+ reset + 集成 |
+| test_control_tools.py | 5 | submit_result/request_block 控制动作终止语义 |
+| test_mcp.py | 6 | 真实子进程 MCP 往返(initialize/tools:list/tools:call) |
 | test_performance.py | 8 | 文件读取/列表/Grep/记忆/上下文/断点/工作区/工具注册 性能测试 |
+| tests/orchestrator/test_state_machine.py | 8 | 合法/非法迁移、attempts 计数、序列化往返 |
+| tests/orchestrator/test_checklist.py | 5 | ChecklistItem/CompletionChecklist 验收与渲染 |
+| tests/orchestrator/test_structured.py | 5 | structured_complete 解析/反馈重试/耗尽异常 |
+| tests/orchestrator/test_loop.py | 13 | S1-S12 多轮闭环场景(FakeBackend) |
+| tests/orchestrator/test_working_memory.py | 3 | 角色视图渲染 + 有界活动日志 |
+| tests/orchestrator/test_retry_archive.py | 4 | 失败轨迹压缩归档与重试注入 |
 
-**总计**: 272 个测试用例，18 个测试文件(含参数化展开数量);当前基线结果 270 passed + 2 skipped(2 个 fastembed 可选用例因模型需首次下载,离线环境运行期跳过,联网后 272 全绿)。
+**总计**: 349 个测试用例，31 个测试文件(25 个 `tests/test_*.py` + 6 个 `tests/orchestrator/test_*.py`;含参数化展开数量);当前基线结果 347 passed + 2 skipped(2 个 fastembed 可选用例因模型需首次下载,离线环境运行期跳过,联网后 349 全绿)。
 
 ## 确定性保证
 所有测试使用：
@@ -335,7 +351,7 @@ python -m agentmuster eval --suite retrieval
 ```bash
 # 确保在 agentmuster 项目根目录(即 pyproject.toml 所在目录)执行,
 # 并确认使用的是项目内置解释器:
-.conda/python.exe -m pytest tests/ --collect-only    # 应列出 272 项
+.conda/python.exe -m pytest tests/ --collect-only    # 应列出 349 项
 ```
 
 ### 导入错误
@@ -351,8 +367,8 @@ ls tests/conftest.py
 
 ### 性能测试失败
 ```bash
-# 确认 giant_test.py 存在(仓库已自带;缺失则重新生成)
-python generate_test_file.py
+# 确认 giant_test.py 存在(仓库已自带;原生成脚本已删除,缺失需从版本库恢复)
+ls examples/giant_test.py
 
 # 查看详细输出
 python -m pytest tests/test_performance.py -v -s
@@ -367,12 +383,12 @@ python -m pytest tests/test_eval.py -v -s
 cat .agentmuster/eval/report.md
 ```
 
-## 质量门(本地执行)
+## 质量门(CI + 本地执行)
 
-项目当前不依赖远端 CI;质量门由以下本地命令构成(全部基于项目内置 `.conda` 环境),提交前建议跑一遍:
+远程 CI 已在批次⑤ 恢复:`.github/workflows/ci.yml` 双 OS 矩阵(`ubuntu-latest` / `windows-latest` × Python 3.11/3.12),步骤为 `ruff check` → `mypy` → `pytest --cov` → `scripts/check_coverage.py`(全局 ≥75%、编排层 ≥90%)。本地按同一口径自检(全部基于项目内置 `.conda` 环境),提交前建议跑一遍:
 
 ```bash
-conda activate D:\PythonProject\agentmuster\.conda
+conda activate <项目根>/.conda
 ruff check .                                   # 静态 lint
 mypy                                           # 类型检查
 python -m pytest tests/ --cov=agentmuster --cov-report=term   # 全量测试 + 覆盖率

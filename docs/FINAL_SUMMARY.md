@@ -3,10 +3,10 @@
 ## 项目概述
 
 **项目名称**: AgentMuster - 本地 Coding Agent Harness  
-**开发语言**: Python 3.10+(项目内置环境为 Python 3.11)  
+**开发语言**: Python 3.11+(项目内置环境为 Python 3.11,`pyproject` 声明 `requires-python>=3.11`)  
 **运行环境**: 项目内置 Conda 独立环境 `.conda/`(仓库根目录下,由 Anaconda 管理;重建命令 `conda env create -p .conda -f environment.yml`)  
 **测试环境**: pytest 8.x, Windows  
-**测试结果**: **272 个测试用例** ✅ (18 个测试文件;当前基线 270 passed + 2 skipped,2 个 fastembed 可选用例在离线环境跳过)
+**测试结果**: **349 个测试用例** ✅ (31 个测试文件;当前基线 347 passed + 2 skipped,2 个 fastembed 可选用例在离线环境跳过)
 
 ---
 
@@ -25,7 +25,6 @@ agentmuster/                          # 项目根目录
 ├── requirements-project.txt      # 完整环境 = dev+api+vector+可编辑安装
 ├── environment.yml               # Conda 环境定义(重建项目内置 .conda 环境)
 ├── .gitignore                    # Git 忽略规则
-├── generate_test_file.py         # 生成巨型测试文件(giant_test.py)的脚本
 ├── config/
 │   └── default.yaml              # 默认配置文件 (含所有可配置项)
 ├── benchmarks/
@@ -34,7 +33,7 @@ agentmuster/                          # 项目根目录
 │   ├── retrieval.json            # 核心检索召回数据(38 条查询)
 │   ├── retrieval_extra.json      # 扩展 4 领域 44 条查询(合计 82 条)
 │   └── real_tasks.json           # Layer 6 真实编码任务(4 个)
-├── agentmuster/                      # 核心代码包 (~35 Python 文件)
+├── agentmuster/                      # 核心代码包 (66 Python 文件)
 │   ├── __init__.py               # 包初始化
 │   ├── __main__.py               # python -m agentmuster 入口
 │   ├── cli.py                    # CLI 命令行接口 (run/resume/serve/orchestrate/eval/benchmark/artifacts/doctor)
@@ -63,7 +62,6 @@ agentmuster/                          # 项目根目录
 │   │
 │   ├── memory/                   # [模块] 结构化记忆系统
 │   │   ├── store.py              # StructuredMemory (三层存储:tasks/files/relations, substring/vector/hybrid)
-│   │   ├── retriever.py          # MemoryRetriever (检索接口)
 │   │   └── vectors.py            # 向量检索 (HashingEmbedder/VectorIndex/BM25/HybridRetriever)
 │   │
 │   ├── checkpoint/               # [模块] 断点与恢复
@@ -71,13 +69,26 @@ agentmuster/                          # 项目根目录
 │   │   └── drift.py              # WorkspaceDriftDetector (工作区漂移识别, SHA256精确比对)
 │   │
 │   ├── safety/                   # [模块] 安全边界
-│   │   ├── guard.py              # SafetyGuard (参数校验/工作区隔离/HITL/去重)
+│   │   ├── guard.py              # SafetyGuard (动作白名单/参数校验/工作区隔离/去重/振荡 Guard/HITL)
+│   │   ├── policy.py             # ActionPolicy 角色动作白名单
+│   │   ├── repeat_guard.py       # RepeatedActionGuard 三重死循环检测
 │   │   └── redact.py             # Redactor (敏感信息脱敏: API Key/密码/私钥等)
 │   │
 │   ├── agent/                    # [模块] 主调度循环 + 编排
 │   │   ├── harness.py            # AgentHarness (主循环 run() / resume(), on_event 埋点)
-│   │   ├── orchestrator.py       # Orchestrator (子代理并行编排, 独立子工作区)
+│   │   ├── orchestrator.py       # Orchestrator (多轮 Planner-Validator 闭环, 子任务共享交付工作区)
+│   │   ├── prompts.py            # Planner / Validator 角色提示词
 │   │   └── __init__.py
+│   │
+│   ├── orchestrator/             # [模块] 多智能体编排角色层
+│   │   ├── tasks.py              # Task/TaskStatus 状态机 + 迁移表
+│   │   ├── checklist.py          # CompletionChecklist 验收清单
+│   │   ├── structured.py         # structured_complete 后端无关结构化输出
+│   │   ├── planner.py            # PlannerRole 分解/重规划
+│   │   ├── validator.py          # ValidatorRole 验收
+│   │   ├── working_memory.py     # 角色视图记忆
+│   │   ├── retry_archive.py      # 失败教训归档
+│   │   └── snapshot.py           # 编排级快照与恢复
 │   │
 │   ├── observability/            # [模块] 可观测性 (链路追踪)
 │   │   └── tracing.py            # Span / Tracer (零依赖, OTLP 风格 trace.json + 可选 OTel 桥接)
@@ -95,32 +106,41 @@ agentmuster/                          # 项目根目录
 │   └── eval/                     # [模块] 评测审计闭环
 │       ├── benchmark.py          # Benchmark 数据加载 (26个手写任务 + 42个冻结任务 + 检索用例)
 │       ├── experiment.py         # 对照实验原语 (compare_metrics, format_delta)
-│       ├── runner.py             # EvalRunner (五层评测运行器)
+│       ├── runner.py             # EvalRunner (Layer 1-5 离线评测 + real/real_baseline/embedder 分发)
 │       ├── judge.py              # LLM-as-judge 评委 (严格 JSON 结论/解析兜底)
 │       ├── real.py               # Layer 6 真实模型端到端评测 (Ollama)
 │       ├── raw_baseline.py       # Layer 6b 裸基线对照 (single_shot / naive_loop 两臂 + 三臂对照)
+│       ├── layer7_multiagent.py  # Layer 7 多智能体端到端基准 (8 任务 + 机制消融)
 │       └── __init__.py
 │
-├── tests/                        # pytest 测试套件 (18 个测试文件, 272 个用例)
-│   ├── conftest.py               # 共享 fixtures (tmp_path_factory_override, config, workspace, make_harness)
-│   ├── test_models.py            # 15 个测试用例
-│   ├── test_tools.py            # 21 个测试用例
-│   ├── test_sandbox.py          # 15 个测试用例
-│   ├── test_safety.py           # 70 个测试用例 (参数化边界展开)
-│   ├── test_context.py          # 19 个测试用例
-│   ├── test_memory.py           # 19 个测试用例
-│   ├── test_checkpoint.py       # 15 个测试用例
-│   ├── test_harness.py          # 18 个测试用例
-│   ├── test_backend.py           # 9 个测试用例 (重试/退避/流式/usage)
-│   ├── test_cost.py              # 5 个测试用例 (成本核算)
-│   ├── test_eval.py             # 18 个测试用例 (五层评测)
-│   ├── test_observability.py     # 7 个测试用例 (链路追踪/JSON 日志)
-│   ├── test_vectors.py          # 11 个测试用例 (嵌入/BM25/混合检索)
-│   ├── test_api.py               # 7 个测试用例 (FastAPI SSE/后端切换/双跑对照)
-│   ├── test_orchestrator.py      # 4 个测试用例 (并行/降级/事件)
-│   ├── test_real_eval.py         # 4 个测试用例 (LLM-as-judge 解析/真实任务断言)
-│   ├── test_real_baseline.py     # 7 个测试用例 (Layer 6b 裸基线两臂/工具白名单/三臂对照)
-│   └── test_performance.py       # 8 个测试用例 (性能测试)
+├── tests/                        # pytest 测试套件 (31 个测试文件, 349 个用例)
+│   ├── conftest.py               # 共享 fixtures (tmp_path 重定向, config, workspace, make_harness)
+│   ├── test_models.py            # 16   模型后端
+│   ├── test_tools.py             # 21   工具
+│   ├── test_sandbox.py           # 15   沙箱
+│   ├── test_safety.py            # 70   安全链(参数化边界展开)
+│   ├── test_policy.py            # 4    角色动作白名单
+│   ├── test_repeat_guard.py      # 8    重复/振荡 Guard
+│   ├── test_control_tools.py     # 5    控制动作
+│   ├── test_context.py           # 19   上下文治理
+│   ├── test_context_pairing.py   # 2    配对不变量
+│   ├── test_memory.py            # 19   结构化记忆
+│   ├── test_vectors.py           # 11   向量/BM25/混合检索
+│   ├── test_checkpoint.py        # 15   断点与漂移
+│   ├── test_harness.py           # 18   主循环
+│   ├── test_backend.py           # 9    后端重试/退避/流式
+│   ├── test_local_openai_protocol.py # 6 协议降级/截断自愈
+│   ├── test_cost.py              # 5    成本核算
+│   ├── test_eval.py              # 18   评测层
+│   ├── test_eval_layer7.py       # 7    Layer 7 检查器/消融
+│   ├── test_observability.py     # 7    链路追踪/JSON 日志
+│   ├── test_api.py               # 7    API/SSE/双跑对照
+│   ├── test_mcp.py               # 6    MCP 子进程往返
+│   ├── test_orchestrator.py      # 4    编排
+│   ├── test_real_eval.py         # 4    Layer 6 离线单测
+│   ├── test_real_baseline.py     # 7    Layer 6b 裸基线
+│   ├── test_performance.py       # 8    性能测试
+│   └── orchestrator/             # 6 文件 38 用例(状态机/Checklist/结构化/角色记忆/Retry Archive/多轮闭环)
 │
 ├── examples/                     # 使用示例
 │   ├── demo.py                   # 综合演示
@@ -134,6 +154,8 @@ agentmuster/                          # 项目根目录
     ├── OUTLINE.md                # 项目大纲/结构说明
     ├── TESTING.md                # 测试方法说明
     ├── LEARNING_GUIDE.md         # 学习指南(初学者推荐起点)
+    ├── AgentMuster学习指南.md     # 求职导向深度学习指南(12 站源码精读)
+    ├── MERGE_DESIGN.md           # miniMaster 角色层移植设计记录
     ├── IMPROVEMENT_PLAN.md       # 企业化改造计划
     ├── EVAL_HARDENING.md         # 评测加固方案
     ├── WEB_BACKEND_SWITCH.md     # Web 后端切换与一键双跑对照设计记录
@@ -387,7 +409,7 @@ class ApprovalProvider:
 
 ### 模块 6: 评测审计闭环体系 (eval/)
 
-**5 层评测架构**:
+**七层评测架构**(Layer 1-5 离线 Mock 回放 + Layer 6/6b 真实模型 + Layer 7 多智能体):
 
 ```
 Layer 1: Harness 回归测试
@@ -398,7 +420,7 @@ Layer 1: Harness 回归测试
 
 Layer 2: 上下文治理评测
   ├─ 目标: 验证预算裁剪收益
-  ├─ 方法: A/B 对照 (budget=1500 vs budget=1_000_000)
+  ├─ 方法: A/B 对照 (budget=1500 vs budget=10_000_000)
   ├─ 指标: avg/max compression ratio, compliance rate
   └─ 通过: avg~80%, max~81%, compliance=100% ✓
 
@@ -418,6 +440,18 @@ Layer 5: 检索召回评测
   ├─ 方法: 82 条查询(exact 23/synonym 29/distractor 11/empty 19), 对照 recall@1/3/5 + MRR@5
   └─ 通过: 平均 recall@1/3/5 substring 28%/28%/28% vs hybrid 61%/63%/63%,
            MRR@5 0.44 vs 0.98;核心同义改写查询上 hybrid recall@3=100% 而 substring=0% ✓
+
+Layer 6: 真实模型端到端(需 Ollama)
+  ├─ 方法: 4 个编码任务 + 硬断言 + LLM-as-judge
+  └─ 通过: 4/4 硬断言;judge 0/4(2b 小模型评委不可靠,如实保留)
+
+Layer 6b: 裸模型基线对照
+  ├─ 方法: 固定模型与任务集,只改"有没有 harness"(single_shot / naive_loop 两臂)
+  └─ 通过: 硬断言 1/4 → 3/4 → 4/4(三臂)
+
+Layer 7: 多智能体端到端基准(eval/layer7_multiagent.py,手动跑)
+  ├─ 方法: 8 任务客观检查器 + --ablate guard/retry/budget/validator 机制消融
+  └─ 通过: 首次真实 Ollama 实测 hello 冒烟 ✅、quick 3/4
 ```
 
 **Benchmark 数据集** (`benchmarks/tasks.json`):
@@ -435,7 +469,7 @@ Layer 5: 检索召回评测
 
 ### 巨型测试文件
 
-`examples/giant_test.py` 由 `generate_test_file.py` 自动生成，包含:
+`examples/giant_test.py` 为随仓库提交的巨型测试文件(原生成脚本 `generate_test_file.py` 已在批次③ 作为死代码删除)，包含:
 - **500 个函数**: func_0001 到 func_0500，每个执行模乘计算
 - **排序算法 (8 种)**: bubble/quick/merge/heap/insertion/selection/counting/radix sort
 - **设计模式 (11 种)**: Singleton/Factory/Builder/Observer/Strategy/Decorator/Adapter/Proxy/Command/StateMachine/Chain of Responsibility
@@ -443,8 +477,8 @@ Layer 5: 检索召回评测
 - **20 个通用容器类**: 带数据存储/历史记录/统计/__repr__
 
 ```bash
-# 生成巨型测试文件
-python generate_test_file.py
+# 确认巨型测试文件存在(仓库已自带;原生成脚本已删除)
+ls examples/giant_test.py
 ```
 
 ### 8 大性能测试维度
@@ -501,9 +535,9 @@ python generate_test_file.py
 ### 运行测试
 
 ```bash
-# 使用项目内置 Conda 环境(先激活: conda activate D:\PythonProject\agentmuster\.conda)
+# 使用项目内置 Conda 环境(先激活: conda activate <项目根>/.conda)
 
-# 运行完整测试套件 (272 项)
+# 运行完整测试套件 (349 项)
 .conda/python.exe -m pytest tests/ -v
 
 # 运行性能测试
@@ -517,26 +551,34 @@ python generate_test_file.py
 
 | 测试文件 | 用例数 | 测试内容 |
 |----------|--------|----------|
-| test_models.py | 15 | Mock 脚本 progression/state恢复, LocalOpenAI parse(含 arguments 字符串格式), 工具schema格式 |
+| test_models.py | 16 | Mock 脚本 progression/state恢复, LocalOpenAI parse(含 arguments 字符串格式), 工具schema格式 |
 | test_tools.py | 21 | 每种工具的 execute + error case + meta 字段 |
 | test_sandbox.py | 15 | PathEscapeError 拦截, rel兼容, snapshot 指纹, list过滤隐藏 |
 | test_safety.py | 70 | validate_params(参数化组合)/escape/shell/HITL/dedup/redact 边界展开 |
+| test_policy.py | 4 | ActionPolicy 角色白名单/越权消息 |
+| test_repeat_guard.py | 8 | RepeatedActionGuard 三重规则 + reset + 集成 |
+| test_control_tools.py | 5 | submit_result/request_block 控制动作终止语义 |
 | test_context.py | 19 | CJK/ASCII token估计, fold/fold_to_1/enforce_budget, 深拷贝安全, deterministic replay, 摘要器 |
+| test_context_pairing.py | 2 | 裁剪不破坏 tool_calls/tool 配对(D9 不变量) |
 | test_memory.py | 19 | remember_task/update/parent_link, file_symbols/same_hash_skip, search(3模式), followup_context, save_load |
+| test_vectors.py | 11 | HashingEmbedder 确定性/归一化, 余弦, BM25 排序, HybridRetriever α 加权, FastEmbed 可选 |
 | test_checkpoint.py | 15 | save_load_unicode/overwrite, exists/list_all, drift_compare, summary_text |
 | test_harness.py | 18 | run_flow(complete/artifacts/metrics/max_steps), safety_intercept, dedup, resume_flow, 空终答温和重问 |
 | test_backend.py | 9 | 重试/指数退避/429/5xx/Retry-After, usage 解析, 流式 complete_stream |
+| test_local_openai_protocol.py | 6 | HTTP 桩协议状态机: 降级/截断自愈/文本动作解析 |
 | test_cost.py | 5 | 按价目表核算 token 成本, 缺价目不计费 |
 | test_eval.py | 18 | benchmark_data, eval_layers(回归/上下文/记忆/恢复/检索), report_writing |
+| test_eval_layer7.py | 7 | Layer 7 客观检查器移植/消融映射/runner 冒烟 |
 | test_observability.py | 7 | Tracer span 层级/耗时, on_event 重建, JSON 日志, trace.json 导出 |
-| test_vectors.py | 11 | HashingEmbedder 确定性/归一化, 余弦, BM25 排序, HybridRetriever α 加权, FastEmbed 可选 |
 | test_api.py | 7 | health/监控页, 提交→SSE→完成事件, 未知任务 404, 后端字段非法 400, 显式 local_openai 工厂注入, script 锁定 Mock, 双跑对照两臂元数据 |
+| test_mcp.py | 6 | 真实子进程 MCP 往返(initialize/tools:list/tools:call) |
 | test_orchestrator.py | 4 | 并行编排, 失败降级(partial), 默认 planner 单子任务, 事件发射 |
 | test_real_eval.py | 4 | LLM-as-judge JSON 解析/兜底, 真实任务硬断言与 mock 跳过(离线部分) |
 | test_real_baseline.py | 7 | Layer 6b 代码块 path 解析, single_shot 落盘断言, naive_loop 工具执行与指标, 工具白名单排除 shell/memory, 三臂对照 harness 参考, mock 优雅跳过, suite 不清空输出目录 |
 | test_performance.py | 8 | 文件读取/列表/Grep/记忆/上下文/断点/工作区/工具注册 性能测试 |
+| tests/orchestrator/(6 文件) | 38 | 状态机(8)/Checklist(5)/结构化(5)/多轮闭环(13)/角色记忆(3)/Retry Archive(4) |
 
-**总计**: 272 个测试用例(18 个测试文件)
+**总计**: 349 个测试用例(31 个测试文件)
 
 ---
 
@@ -552,7 +594,7 @@ python generate_test_file.py
 | model.local_openai.base_url | `"http://127.0.0.1:11434/v1"` | OpenAI兼容服务地址(default.yaml 预置 Ollama;代码内置默认为 8080/v1) |
 | harness.max_steps | `30` | 防死循环上限 |
 | harness.empty_answer_nudges | `1` | 空终答温和重问次数(0 = 关闭) |
-| context.budget_tokens | `4000` | 软预算(触发折叠) |
+| context.budget_tokens | (非 DEFAULT 项) | 评测运行器写入的软预算键,stdlib `/health` 透出;不参与裁剪触发(裁剪由 hard_limit_tokens / keep_last_turns 驱动) |
 | context.hard_limit_tokens | `6000` | 硬上限(强制截断) |
 | context.keep_last_turns | `6` | 保留最近N轮原文 |
 | context.max_file_content_chars | `8000` | 单次工具返回截断阈值 |
@@ -614,7 +656,7 @@ python generate_test_file.py
 ✅ **7 类工具** — file_read/write/edit/list, grep, shell, memory_query  
 ✅ **3 类运行工件** — trajectory.jsonl(轨迹) + checkpoint.json(断点) + metrics.json+report.md(报告)  
 ✅ **26 个 Benchmark 任务** — 手写任务 regression(17)/context(4)/memory(4)/resume(1);另有固定 seed 冻结基准 tasks.generated.json(42 个任务)入库保证可复现  
-✅ **272 项自动化测试** — 覆盖全部模块 + 性能测试, 当前基线 270 passed + 2 skipped  
+✅ **349 项自动化测试** — 覆盖全部模块 + 性能测试, 当前基线 347 passed + 2 skipped  
 ✅ **8 维度性能测试** — 使用巨型文件(~4669行)进行压力测试  
 ✅ **上下文治理演示** — context_demo.py 展示三层裁剪策略  
 ✅ **完整文档** — README / CHANGELOG / ARCHITECTURE / OUTLINE / TESTING / LEARNING_GUIDE / FINAL_SUMMARY / IMPROVEMENT_PLAN / EVAL_HARDENING / WEB_BACKEND_SWITCH  

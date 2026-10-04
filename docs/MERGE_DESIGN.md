@@ -33,7 +33,7 @@
 - 协议双模式降级（NATIVE→TEXT_JSON）+ `finish_reason=length` 截断自愈 → 并入 `LocalOpenAIBackend`，并补齐 miniMaster 的测试盲区（该文件原覆盖率约 32%）；
 - miniMaster 8 任务真实基准 + 客观检查器 + `--ablate` 消融开关 → eval Layer 7（手动跑，不进 CI）；
 - 两套 JSON 提取 / 截断工具函数合并为 `util.py` 一份实现；
-- 死代码清理随批：`memory/retriever.py`（零调用）、根目录 `generate_test_file.py`（4669 行生成产物）、`context.budget_tokens` / `keep_last_tool_results` / `compressible_age` 三个声明未生效的配置项（生效或删除，随上下文批次定）；
+- 死代码清理随批：`memory/retriever.py`（零调用）、根目录 `generate_test_file.py`（4669 行生成产物）已删除；`keep_last_tool_results` / `compressible_age` 两个声明未生效的配置项已清除，`context.budget_tokens` 经核查仍在评测运行器 `EvalRunner._cfg_for()` 与 stdlib `/health` 中生效，予以保留（未随批删除）；
 - `Task`（状态机版）替代 `SubTask`；每轮内对依赖就绪的任务并行；角色提示词 → `agent/prompts.py`；配置键走 `orchestrator.*` 点式命名。
 
 ## 2. 目标与非目标
@@ -183,7 +183,7 @@ run(goal, task_id=None):
 |---|---|---|
 | 编排层 | `orchestrator/working_memory.py` | 跨任务工作记忆：Planner replan 时看任务状态与结论、Validator 验收时看 Checklist+结论；三级裁剪（截断/LLM 压缩/滚动窗口）；线程安全已内置 |
 | 编排层 | `orchestrator/retry_archive.py` | 失败任务轨迹压缩归档与重试注入 |
-| 子任务层 | `memory/structured_memory.py`（现有） | 单任务内文件记忆、混合检索、follow-up 摘要注入——**零改动** |
+| 子任务层 | `memory/store.py`（现有） | 单任务内文件记忆、混合检索、follow-up 摘要注入——**零改动** |
 
 压缩函数适配：`CompressFn` 统一接 `context.summarizer`（`context.summarizer=llm` 时用 LLMSummarizer，自带确定性回退；否则确定性摘要）。
 
@@ -323,7 +323,7 @@ pytest-cov 不支持按路径分别 fail_under，采用：`coverage json` 输出
 ## 9. 验收清单（Definition of Done）
 
 - [x] 五批全部合入，每批 CHANGELOG 条目 + 独立 commit 主题（b19ba1e/50ec4b2/e37496d/3d2a890/86f1fc3 + 批次⑤）
-- [x] 全量测试绿：基座 272 项 + 移植/新增 76 项 = 348 项全绿
+- [x] 全量测试绿：基座 272 项 + 移植/新增 76 项 = 348 项；Layer 7 首次真实 Ollama 实测驱动 1 项回归测试后 **349 项全绿**
 - [x] miniMaster 84 项用例的对应物按 §7.2 全部落位或有记录的取舍（Executor 循环体不移植=D1、LiveContextTrimmer 组件不移植=D9、WorkingMemory 精简见执行期修订 1）
 - [x] CI 双 OS 矩阵（ubuntu/windows × 3.11/3.12）+ 覆盖率门禁生效（编排层 ≥90% 实测 95.4%、全局 ≥75% 实测 80.2%）
 - [ ] Layer 7 真实模型 8/8 + ablate 对照报告（手动，本地 OpenAI 兼容端点跑 `python -m agentmuster.eval.layer7_multiagent`）

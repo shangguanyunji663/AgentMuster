@@ -6,7 +6,7 @@
 
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-348%20passed-brightgreen)](tests/)
+[![Tests](https://img.shields.io/badge/tests-349%20passed-brightgreen)](tests/)
 [![Core deps](https://img.shields.io/badge/core%20deps-PyYAML%20only-blue)](requirements.txt)
 [![Offline](https://img.shields.io/badge/offline-ready-blueviolet)](#评测体系与实测结果)
 [![Version](https://img.shields.io/badge/version-0.1.0-lightgrey)](CHANGELOG.md)
@@ -24,7 +24,7 @@
 | 上下文膨胀，长任务中途爆窗 | 软预算触发折叠 + 硬限额强制截断，三层裁剪策略链式降级 | `agentmuster/context/` |
 | 同一文件反复读，token 白烧 | 任务 / 文件 / 关联三层结构化记忆，follow-up 自动注入父任务摘要 | `agentmuster/memory/` |
 | 中断即重来，进度全丢 | Checkpoint / Resume + 工作区 SHA256 指纹漂移识别 | `agentmuster/checkpoint/` |
-| 工具乱跑、路径逃逸、密钥进日志 | Schema 校验 → 路径沙箱 → Shell 黑白名单 → 去重 → 重复/振荡 Guard → HITL 审批 → 脱敏，七道防线 + 动作白名单 | `agentmuster/safety/` |
+| 工具乱跑、路径逃逸、密钥进日志 | 动作白名单 → Schema 校验 → 路径沙箱 → Shell 黑白名单 → 去重 → 重复/振荡 Guard → HITL 审批，七道检查点（另在输出侧统一脱敏） | `agentmuster/safety/` |
 | 跑完不知道发生了什么 | 轨迹 / 检查点 / 指标三类运行工件 + 链路追踪 + 可复现评测报告 | `agentmuster/artifacts.py`、`agentmuster/observability/` |
 | 复杂目标单 Agent 一把梭容易失控 | Planner-Executor-Validator 多轮闭环：Completion Checklist 客观验收、缺失项精确回流重规划、失败即时重试并注入教训、全局预算熔断 | `agentmuster/agent/orchestrator.py`、`agentmuster/orchestrator/` |
 | 分不清「系统不行」还是「模型不行」 | 裸模型基线对照：`single_shot` / `naive_loop` / `harness` 三臂同任务集对比 + Layer 7 多智能体基准与机制消融 | `agentmuster/eval/raw_baseline.py`、`agentmuster/eval/layer7_multiagent.py` |
@@ -34,7 +34,7 @@
 **演进说明**：本项目由两个同源项目合并演进而来——单 Agent 运行底座（原 MyCoder）吸收了多智能体角色闭环框架（原 miniMaster）的 Planner-Executor-Validator 编排层、行为安全防线与协议兼容工程，合并决策与接口对齐记录见 [`docs/MERGE_DESIGN.md`](docs/MERGE_DESIGN.md)。合并后的三层结构：
 
 1. **单 Agent 底座**（`agentmuster/agent/`）：上下文治理 / 结构化记忆 / Checkpoint / 七道安全防线 / 工件系统；
-2. **多智能体编排**（`agentmuster/orchestrator/` + `agent/agent/orchestrator.py`）：任务状态机 + 多轮闭环 + Retry Archive + 编排级断点续跑；
+2. **多智能体编排**（`agentmuster/orchestrator/` + `agentmuster/agent/orchestrator.py`）：任务状态机 + 多轮闭环 + Retry Archive + 编排级断点续跑；
 3. **七层评测**（`agentmuster/eval/`）：Layer 1-6b 离线与三臂对照 + Layer 7 多智能体端到端基准（客观检查器 + 机制消融）。
 
 ---
@@ -73,10 +73,10 @@ docker compose up -d
 按需安装可选依赖组：
 
 ```bash
-python -m pip install 'agentmuster-harness[api]'      # FastAPI + SSE 实时事件流 + 监控页
-python -m pip install 'agentmuster-harness[vector]'   # 真实语义向量检索(fastembed / bge-small)
-python -m pip install 'agentmuster-harness[otel]'     # OpenTelemetry 桥接
-python -m pip install 'agentmuster-harness[dev]'     # ruff + mypy + pytest
+python -m pip install 'agentmuster[api]'      # FastAPI + SSE 实时事件流 + 监控页
+python -m pip install 'agentmuster[vector]'   # 真实语义向量检索(fastembed / bge-small)
+python -m pip install 'agentmuster[otel]'     # OpenTelemetry 桥接
+python -m pip install 'agentmuster[dev]'     # ruff + mypy + pytest
 ```
 
 ### 跑通第一个任务
@@ -153,7 +153,7 @@ Python: 3.11.16
   pytest     OK
 模型后端: mock
 工作区根: .
-上下文预算: 4000 tokens
+上下文硬上限: 6000 tokens
 API 地址: 127.0.0.1:8910
 ```
 
@@ -168,7 +168,7 @@ python -m agentmuster serve --impl fastapi --config config/default.yaml --port 8
 ### 跑测试与评测
 
 ```bash
-python -m pytest tests/                                        # 272 项测试
+python -m pytest tests/                                        # 349 项测试
 python -m agentmuster eval --suite all --output .agentmuster/eval      # Layer 1-5 离线评测
 python examples/real_model_demo.py                             # Layer 6 真实模型端到端(需 Ollama)
 ```
@@ -272,14 +272,17 @@ fold_old_turns  →  drop_stale_turns  →  truncate_long_content
 
 ### 5. 工具与安全边界
 
-请求从进入到执行需连过六道防线：
+请求从进入到执行需连过七道检查点（`SafetyGuard.check()` 的编号链）：
 
-1. **参数校验**：JSON Schema 验证类型 / 必填 / 枚举 / 范围
-2. **工作区隔离**：拦截 `../`、绝对路径、符号链接逃逸
-3. **Shell 治理**：白名单命令 + 黑名单模式（`rm -rf`、`curl`、fork bomb 等）
-4. **重复调用拦截**：读类工具缓存命中短路，写类工具标记跳过
-5. **高风险审批（HITL）**：`prompt` / `allow` / `deny` 三档策略
-6. **敏感信息脱敏**：API Key、密码、私钥等正则替换后才会写入工件
+1. **动作白名单**：编排子任务经 `allowed_tools` 收窄可用工具，越权即拦截
+2. **参数校验**：JSON Schema 验证类型 / 必填 / 枚举 / 范围
+3. **工作区隔离**：拦截 `../`、绝对路径、符号链接逃逸
+4. **Shell 治理**：白名单命令 + 黑名单模式（`rm -rf`、`curl`、fork bomb 等）
+5. **重复调用拦截**：读类工具缓存命中短路，写类工具标记跳过
+6. **重复/振荡 Guard**：连续重复 / 窗口计数 / 周期振荡三重死循环检测
+7. **高风险审批（HITL）**：`prompt` / `allow` / `deny` 三档策略
+
+另有输出侧的**敏感信息脱敏**：API Key、密码、私钥等正则替换后才会写入工件。
 
 ### 6. 可观测性
 
@@ -300,7 +303,7 @@ fold_old_turns  →  drop_stale_turns  →  truncate_long_content
 
 ### 8. 子代理编排（默认关闭）
 
-`agent/orchestrator.py` 把复杂目标交给 Planner 分解为子任务，各子任务由**完全独立工作区 / 记忆 / 断点 / 工件根**的子 `AgentHarness` 经 `ThreadPoolExecutor` 并行执行；单个子任务失败标记 `failed` 不阻断整体（部分降级），汇总产出 `orchestration.json`。
+`agent/orchestrator.py` 把复杂目标交给 Planner 分解为带 `done_criteria` / `depends_on` 的子任务，由 Validator 按 Completion Checklist 多轮验收、缺失项回流重规划；同一编排内的子任务**共享一个交付工作区**（`.orch_<orch_id>/ws`，让 dep-chain 类复合目标可用先任务产出），而记忆 / 断点 / 工件根仍按子任务隔离；依赖就绪的任务经 `ThreadPoolExecutor` 并行执行。单个子任务失败标记 `failed` 不阻断整体（部分降级），汇总产出 `orchestration.json`。
 
 ---
 
@@ -335,7 +338,7 @@ python -m agentmuster artifacts --task-id demo_hello
 | 工作区 | `workspace.root` / `allow_absolute` | 工具沙箱边界；默认禁止绝对路径 |
 | 模型 | `model.backend` / `model.local_openai.*` / `model.pricing` | 后端选择、本地端点、成本价目表 |
 | 主循环 | `harness.max_steps` / `max_tool_calls_per_turn` / `empty_answer_nudges` | 防死循环、空终答重问次数（默认 1，`0` 关闭） |
-| 上下文 | `context.budget_tokens` / `hard_limit_tokens` / `keep_last_turns` / `summarizer` | 软预算 4000、硬上限 6000、保留最近 6 轮、摘要器类型 |
+| 上下文 | `context.hard_limit_tokens` / `keep_last_turns` / `max_file_content_chars` / `summarizer` | 硬上限 6000、保留最近 6 轮、单次文件内容截断阈值、摘要器类型（`budget_tokens` 为评测运行器使用的软预算键，非内置 DEFAULT 项、不参与裁剪触发） |
 | 记忆 | `memory.enabled` / `retrieval.mode` / `retrieval.alpha` / `retrieval.embedder` | 检索模式与混合权重、嵌入器选择 |
 | 断点 | `checkpoint.enabled` / `interval_steps` / `detect_drift` | 每 4 步落盘、裁剪前强制落盘、恢复时识别漂移 |
 | 安全 | `safety.hitl_policy` / `dedup_enabled` / `shell.allow_commands` / `deny_patterns` | 审批策略与命令黑白名单 |
@@ -375,7 +378,7 @@ python -m agentmuster artifacts --task-id demo_hello
 
 ### 结果边界（如实标注）
 
-- Layer 1–5 与全部 272 项 pytest 使用 `MockBackend` 离线回放，度量的是**系统能力**，不代表模型能力。
+- Layer 1–5 与全部 349 项 pytest 使用 `MockBackend` 离线回放，度量的是**系统能力**，不代表模型能力。
 - Layer 6 的 LLM-as-judge 由 2b 小模型担任，实测 0/4 通过、判定不可靠；该结果如实保留在 `real_report.json`，**不以硬断言通过冒称评委通过**。
 - 2b 模型跨运行方差大（同一任务曾出现空终答失败），单次运行胜负仅供参考；换用更大模型或放宽评委超时可获得更稳定结论。
 
@@ -407,7 +410,7 @@ agentmuster/
 │   ├── api/                     # stdlib / FastAPI+SSE 服务 + Vue 3 监控页
 │   └── eval/                    # 评测运行器、LLM-as-judge、真实模型与裸基线评测
 ├── benchmarks/                  # 评测数据:26 手写 + 42 冻结任务 + 82 检索查询 + 4 真实任务
-├── tests/                       # pytest 测试套件(19 个文件,272 项)
+├── tests/                       # pytest 测试套件(31 个文件,349 项)
 ├── examples/                    # 示例脚本(综合演示 / 上下文演示 / 真实模型演示)
 ├── config/                      # default.yaml(本地) 与 docker.yaml(容器)
 ├── docs/                        # 文档(架构 / 测试 / 学习指南 / 改进计划等)
@@ -426,9 +429,11 @@ agentmuster/
 | 文档 | 内容 |
 | --- | --- |
 | [docs/LEARNING_GUIDE.md](docs/LEARNING_GUIDE.md) | 学习指南，**初学者的推荐起点** |
+| [docs/AgentMuster学习指南.md](docs/AgentMuster学习指南.md) | 求职导向深度学习指南（12 站源码精读 + 面试弹药） |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 架构设计与分层职责 |
-| [docs/TESTING.md](docs/TESTING.md) | 测试方法、质量门（本地 ruff / mypy / pytest） |
+| [docs/TESTING.md](docs/TESTING.md) | 测试方法、质量门（CI 双 OS 矩阵 + 本地 ruff / mypy / pytest） |
 | [docs/OUTLINE.md](docs/OUTLINE.md) | 项目大纲与模块清单 |
+| [docs/MERGE_DESIGN.md](docs/MERGE_DESIGN.md) | miniMaster 角色层移植设计（接口对齐 + 分批计划） |
 | [docs/EVAL_HARDENING.md](docs/EVAL_HARDENING.md) | 评测加固方案 |
 | [docs/IMPROVEMENT_PLAN.md](docs/IMPROVEMENT_PLAN.md) | 企业化改造分期计划与结果记录 |
 | [docs/WEB_BACKEND_SWITCH.md](docs/WEB_BACKEND_SWITCH.md) | Web 后端切换与一键双跑对照设计 |
@@ -445,7 +450,7 @@ agentmuster/
 
 ```bash
 python -m pip install -e ".[dev]"    # 或 conda env create -p .conda -f environment.yml
-python -m pytest tests/               # 确认基线 272 项全绿
+python -m pytest tests/               # 确认基线 349 项全绿
 ```
 
 **2. 代码规范**
@@ -492,7 +497,7 @@ Copyright (c) 2026 shangguanyunji663
 <details>
 <summary><b>必须联网吗？</b></summary>
 
-不需要。核心运行时只依赖 PyYAML，Layer 1–5 评测与全部 272 项测试均使用 MockBackend 离线跑通。只有 Layer 6 / 6b 真实模型评测、以及切换到 `FastEmbedEmbedder` 时才需要本地或网络模型服务。
+不需要。核心运行时只依赖 PyYAML，Layer 1–5 评测与全部 349 项测试均使用 MockBackend 离线跑通。只有 Layer 6 / 6b 真实模型评测、以及切换到 `FastEmbedEmbedder` 时才需要本地或网络模型服务。
 
 </details>
 

@@ -120,7 +120,7 @@
 
 | 术语 | 对应代码 / 配置 | 在本项目中的含义 |
 | --- | --- | --- |
-| 软预算 / 硬限额 | `context.budget_tokens` / `hard_limit_tokens`（6000） | 软预算只用于指标合规统计；硬限额由裁剪链强制保证 |
+| 软预算 / 硬限额 | `context.budget_tokens`（软，评测运行器写入）/ `hard_limit_tokens`（6000） | 裁剪触发由硬限额与 `keep_last_turns` 驱动；`budget_tokens` 非内置 DEFAULT 项，仅供评测合规统计与 stdlib `/health` 透出 |
 | 三级裁剪 | fold_old_turns → drop_stale_turns → truncate_long_content | 折叠旧轮 → 只留最近 1 轮 → 强制截断最长消息 |
 | 配对不变量 | `tests/test_context_pairing.py` | assistant.tool_calls 与 tool 消息必须原子成对，裁剪不得拆散（拆散=API 400） |
 | 三层记忆 | `memory/store.py` | 任务摘要 / 文件摘要（SHA256 去重）/ 关联记忆（任务↔文件↔父任务） |
@@ -469,7 +469,7 @@ AgentMuster/
 │   ├── retrieval.json(+extra)      #   82 条检索查询(exact/synonym/distractor/empty 四类)
 │   ├── real_tasks.json             #   4 个真实编码任务(Layer 6/6b 共用)
 │   └── generators.py               #   冻结生成器(--seed 参数化)
-├── tests/                          # 349 项 pytest(24 文件);tests/orchestrator/ 六文件覆盖编排
+├── tests/                          # 349 项 pytest(31 文件);tests/orchestrator/ 六文件覆盖编排
 ├── examples/                       # demo.py(综合)/context_demo.py(上下文)/real_model_demo.py(Layer 6)
 ├── config/                         # default.yaml(本地) / docker.yaml(容器)
 ├── scripts/check_coverage.py       # 双阈值覆盖率门禁(全局≥75%,编排层≥90%)
@@ -824,7 +824,7 @@ eval/runner.py ──→ agent/harness.py(评测量只改 Config 开关,其余�
 
 `CONTROL_TOOLS = frozenset({SUBMIT_RESULT, REQUEST_BLOCK})`（`tools/control_tools.py:17`）。为什么要前置分流：控制动作是**元层语义**（任务该结束了/该申报阻塞了），不是业务操作——让它过安全链既无意义又可能被白名单误伤。注意 `break`：控制动作出现即终止本轮工具循环（同轮后续调用不再执行）。
 
-### 5.2.2 SafetyGuard.check 的九检查点（`safety/guard.py:148-211`，完整源码）
+### 5.2.2 SafetyGuard.check 的七检查点（`safety/guard.py:148-211`，完整源码）
 
 ```python
     def check(self, tool: Tool, params: dict,
@@ -3796,7 +3796,7 @@ conda env create -p .conda -f environment.yml
 docker compose up -d
 ```
 
-按需安装可选依赖组：`agentmuster-harness[api]`（FastAPI+SSE+监控页）、`[vector]`（fastembed/bge-small 真实语义嵌入）、`[otel]`（OpenTelemetry 桥接）、`[dev]`（ruff+mypy+pytest）。
+按需安装可选依赖组：`agentmuster[api]`（FastAPI+SSE+监控页）、`[vector]`（fastembed/bge-small 真实语义嵌入）、`[otel]`（OpenTelemetry 桥接）、`[dev]`（ruff+mypy+pytest）。
 
 **验证环境**：`python -m agentmuster doctor`——输出 Python 版本、yaml/pytest 可用性、模型后端、工作区根、上下文硬上限、API 地址。
 
@@ -3877,7 +3877,7 @@ python -m agentmuster.eval.layer7_multiagent --suite full --ablate guard,retry  
 
 # 第八部分：测试与质量保障
 
-## 8.1 测试全景（349 项 / 24 文件）
+## 8.1 测试全景（349 项 / 31 文件）
 
 构成（与 CHANGELOG 勾稽：272 基座 → ①+36=308 → ②+19=327 → ③+14=341 → ④+7=348 → 实测修复+1=349）：
 
@@ -3924,7 +3924,7 @@ python -m agentmuster.eval.layer7_multiagent --suite full --ablate guard,retry  
 | --- | --- |
 | 工厂 + 依赖注入 | `AgentHarness.build` / `build_registry` / `create_backend`——测试递假的即可隔离 |
 | 策略 | 三档摘要器 / 四种审批 Provider / 三种检索模式 / 双 API 实现——接口不变换实现 |
-| 责任链 | SafetyGuard 九检查点——每道防线独立、可插拔、短路返回 |
+| 责任链 | SafetyGuard 七检查点——每道防线独立、可插拔、短路返回 |
 | 状态机 | 任务五状态 + 迁移表硬约束 + 非法迁移抛异常——把 LLM 输出约束进合法空间 |
 | 观察者（事件总线） | `on_event` 一对多广播：Tracer/SSE/评测器零侵入挂接 |
 | 适配器 | `_LegacyPlannerAdapter`（旧式 planner 接新接口）；`MCPProxyTool`（远端工具适配本地 Tool 基类） |
@@ -3949,7 +3949,7 @@ python -m agentmuster.eval.layer7_multiagent --suite full --ablate guard,retry  
                     │ ContextManager(三级裁剪)     │   状态机·Checklist
                     │ StructuredMemory(三层+检索)  │   RetryArchive·快照
                     │ CheckpointStore(六时机+漂移) │   WorkingMemory
-                    │ SafetyGuard(九检查点纵深链)   │   预算熔断·双门验收
+                    │ SafetyGuard(七检查点纵深链)   │   预算熔断·双门验收
                     │ artifacts+Tracer(事件总线)   │
                     └────────────┬───────────────┘
                      ┌───────────┴───────────┐
@@ -3995,7 +3995,7 @@ python -m agentmuster.eval.layer7_multiagent --suite full --ablate guard,retry  
 | Harness 主循环 + 双后端抽象 | Agent 系统架构设计 | 「我把 Agent 需要什么拆成了可替换的六层」 |
 | 三级裁剪 + 配对不变量 + token 估算 | 长上下文工程 | 「压缩率与信息保留率必须同时考核」 |
 | 三层记忆 + 混合检索 | RAG/记忆系统 | 「follow-up 重读 2 次降到 0，MRR 0.44→0.98」 |
-| 九检查点安全链 + 沙箱 + 脱敏 | 工具治理与安全 | 「模型输出不可信是公理，拦截原因回灌是手段」 |
+| 七检查点安全链 + 沙箱 + 脱敏 | 工具治理与安全 | 「模型输出不可信是公理，拦截原因回灌是手段」 |
 | 多轮编排闭环 + 状态机 + 双门验收 | 多智能体系统 | 「LLM 只做决策，状态机与 Checklist 做兜底」 |
 | 断点/漂移/快照双层恢复 | 可靠性工程 | 「宁可漂移误报，不可基于过期状态续跑」 |
 | 七层评测 + 三臂对照 + 消融 | 评测体系与方法论 | 「固定其余、只动一个变量，每个机制都有对照数字」 |
@@ -4021,7 +4021,7 @@ python -m agentmuster.eval.layer7_multiagent --suite full --ablate guard,retry  
 
 ## 10.3 三分钟项目陈述（背稿骨架）
 
-> 「这个项目解决四个真实故障：上下文爆窗、重复劳动、中断丢状态、跑完说不清。结构是三层：**单 Agent 底座**——主循环每步做组装上下文、调模型、过九检查点安全链、执行工具、沉淀记忆、落断点；**多智能体编排**——Planner 拆解出带可验收标准的子任务，依赖就绪的并行执行，Validator 按验收清单逐项核对，验收双门是『模型判定与清单全满足同时成立』，缺失项精确回流触发增量重规划，失败任务压缩归档成教训注入重试；**七层评测**——前五层用 Mock 回放只测系统能力，第六层接真实本地模型，6b 做有无框架的三臂对照，第七层对多智能体基准做机制消融。
+> 「这个项目解决四个真实故障：上下文爆窗、重复劳动、中断丢状态、跑完说不清。结构是三层：**单 Agent 底座**——主循环每步做组装上下文、调模型、过七检查点安全链、执行工具、沉淀记忆、落断点；**多智能体编排**——Planner 拆解出带可验收标准的子任务，依赖就绪的并行执行，Validator 按验收清单逐项核对，验收双门是『模型判定与清单全满足同时成立』，缺失项精确回流触发增量重规划，失败任务压缩归档成教训注入重试；**七层评测**——前五层用 Mock 回放只测系统能力，第六层接真实本地模型，6b 做有无框架的三臂对照，第七层对多智能体基准做机制消融。
 >
 > 两个我最满意的取舍：一是**确定性优先**——核心只依赖 PyYAML，token 估算、摘要、Mock 回放全部确定性，所以 349 项测试全离线可复现，评测数据固定 seed 冻结入库；二是**如实度量**——三臂对照同时摆出成功率和 token 代价（1/4→4/4 的代价是 prompt token 从 529 涨到 11.6 万），LLM 评委不可靠就写进报告，不修改口径凑分。
 >
@@ -4069,7 +4069,7 @@ python -m agentmuster.eval.layer7_multiagent --suite full --ablate guard,retry  
 
 **行业现象**：OWASP LLM Top 10 把 prompt injection 列为 LLM01；Agent 把「读内容」升级成「执行副作用」，攻击面从信息泄露扩大到路径逃逸、命令注入、数据外泄。传统安全的「输入校验」模型不够用——注入可能藏在工具结果、网页内容、甚至记忆里。
 
-**我的证据**：九检查点链（白名单→Schema→沙箱→shell 名单→去重→振荡 Guard→HITL→脱敏）；15 个真实路径 payload（URL 编码、UNC、全角字符）用 **fail-closed 不变量**测——不要求「输入层必须拦住」，只要求「最终路径必在工作区内」；脱敏在输出侧四层生效。最独特的设计是**拦截原因回灌**：拒绝文本就是给模型的教学材料，安全链同时是纠偏链。
+**我的证据**：七检查点链（动作白名单→Schema→沙箱→shell 名单→去重→振荡 Guard→HITL；脱敏在输出侧另做）；15 个真实路径 payload（URL 编码、UNC、全角字符）用 **fail-closed 不变量**测——不要求「输入层必须拦住」，只要求「最终路径必在工作区内」；脱敏在输出侧四层生效。最独特的设计是**拦截原因回灌**：拒绝文本就是给模型的教学材料，安全链同时是纠偏链。
 
 **通用结论**：Agent 权限模型 = 最小权限（按任务动态白名单）+ 纵深防御（单点失效不致命）+ 高风险 HITL（prompt/allow/deny 三档策略化）+ 全程审计（轨迹即审计日志）。被问「Agent 安全与传统安全的区别」时，答「攻击面从请求参数扩大到模型的所有输入通道，且防线的对象自己会推理——所以拦截要附带引导」。
 
@@ -4369,14 +4369,16 @@ python -m agentmuster.eval.layer7_multiagent --suite full --ablate guard,retry  
 
 # 附录 B：已知不一致与待办清单（读源码时用它当镜子）
 
-以下是文档与代码、代码与代码之间的**真实出入**（面试高级谈资，也是 PR 的现成候选）：
+> **2026-10 文档审计更新**：下列第 1–6 项属**文档层**出入，已在全量文档审计中修正（README / TESTING /
+> ARCHITECTURE / CHANGELOG / OUTLINE / FINAL_SUMMARY 等已同步）；第 7–12 项属**代码层**已知问题，
+> 为独立待办，尚未修复。
 
-1. **README「完全隔离工作区」已过时**：README 子代理编排一节与 `agent/orchestrator.py` 模块 docstring（:5）仍写「工作区/记忆/断点/工件互不污染」，但批次④修正后代码是**编排内共享交付工作区**（`_build_harness:404-411` 注释与 test_loop S1/S10 可证）——同文件内 docstring 与 :404 的修正注释自相矛盾。
-2. **README 防线口径不一**：第 27 行「七道防线」漏了第 0 道动作白名单，第 275 行「六道防线」又漏了振荡 Guard；真实顺序见 5.2 节。
-3. **README 路径笔误**：`agent/agent/orchestrator.py` 应为 `agentmuster/agent/orchestrator.py`。
-4. **「Layer 7」编号复用**：`eval/runner.py:697` 的嵌入器对照（`--suite embedder`）与 `layer7_multiagent.py` 多智能体基准都自称 Layer 7。
-5. **TESTING.md 已过时**：仍写「项目当前不依赖远端 CI」，实际 ci.yml 已恢复双 OS 矩阵。
-6. **ARCHITECTURE.md 编排段部分滞后**：「Orchestrator(子代理编排)」小节仍描述旧的一次性分解语义与完全隔离根。
+1. ~~README「完全隔离工作区」已过时~~（**已修正**）：README 子代理编排一节与 `agent/orchestrator.py` 模块 docstring 已统一改为「编排内共享交付工作区（`.orch_<id>/ws`）、记忆/断点/工件按子任务隔离、跨编排完全隔离」，与 `_build_harness` 的批次④ 修正注释一致。
+2. ~~README 防线口径不一~~（**已修正**）：README 已统一为「七道检查点」（动作白名单→Schema→沙箱→shell 名单→去重→振荡 Guard→HITL），脱敏单列为输出侧后处理，与 `SafetyGuard.check()` 的编号链一致。
+3. ~~README 路径笔误~~（**已修正**）：已改为 `agentmuster/agent/orchestrator.py`。
+4. ~~「Layer 7」编号复用~~（**已澄清**）：文档统一以「Layer 7 = 多智能体端到端基准」为准，嵌入器对照改称「嵌入器对照（suite `embedder`）」，并在 TESTING.md 加注代码注释编号重叠的说明。
+5. ~~TESTING.md 已过时~~（**已修正**）：已更新为「质量门(CI + 本地执行)」，注明 `.github/workflows/ci.yml` 双 OS 矩阵已恢复。
+6. ~~ARCHITECTURE.md 编排段部分滞后~~（**已修正**）：「Orchestrator」小节已重写为多轮 Planner-Validator 闭环 + 共享交付工作区 + resume + 事件全集。
 7. **`subtask_end` 可能重复/矛盾发射**：失败重试路径 `_handle_failure`（:363-364）发一次 FAILED、`_run_single` 循环外（:355-356）又发一次 PENDING——同一次执行两条状态矛盾的事件；成功路径只发一条，`test_loop.py` S1 的 `types.count("subtask_end") == 2` 恰好掩盖。
 8. **空终答在确定性编排模式下可能被标 DONE**：nudge 耗尽后 status=completed、final_answer 为空；LLM 模式 Validator 双门会拦，但 `_auto_verdict` 只看状态不看内容。
 9. **冻结生成数据的 wrong_hit 播种错位**：`generators.py:235-238` 场景计划用短名 `wrong`/`fresh`，而播种与严格判定分支只认 `wrong_hit`/`fresh_hit`（`runner.py:428,438`）——生成数据的 wrong follow-up 实际未被播种诱饵（手写数据正常）。
@@ -4678,7 +4680,7 @@ async def gen(q):
 | 0.5→8s ×3 | 模型重试退避（base/cap/次数） | `local_openai.py:31-34` |
 | 32768 | 截断自愈的 max_tokens 天花板 | `max_tokens_ceiling` |
 | 2026-08-19 | 冻结基准 seed | `benchmarks/generators.py` |
-| 349 项 / 24 文件 | pytest 总量 | 实测 collect |
+| 349 项 / 31 文件 | pytest 总量 | 实测 collect |
 | 80.4% / 94.9% | CI 覆盖率：全局 / 编排层（门禁 75% / 90%） | check_coverage.py 实测 |
 | 1/4 → 3/4 → 4/4 | 三臂对照硬断言通过率（qwen3.5:2b） | Layer 6b 报告 |
 | 529 → 14,564 → 115,919 | 三臂 prompt token（single_shot/naive_loop/harness） | Layer 6b 报告 |
@@ -4695,7 +4697,7 @@ async def gen(q):
 | 主循环（终答/工具/控制收口/for-else） | `agent/harness.py:306-419` |
 | 空终答温和重问 | `agent/harness.py:336-368` + 常量 :86-89 |
 | 工具前置分流（控制工具） | `agent/harness.py:478-486` |
-| 安全链九检查点 | `safety/guard.py:148-211` |
+| 安全链七检查点 | `safety/guard.py:148-211` |
 | 参数校验五项 | `safety/guard.py:29-51` |
 | shell 黑白名单 | `safety/guard.py:226-239` |
 | 去重键（排序 JSON） | `safety/guard.py:222-224` |
@@ -4739,7 +4741,7 @@ async def gen(q):
 - **确定性**：Mock 脚本回放 + 启发式 token + 深拷贝重算——「同输入必得同输出」。
 - **裁剪**：按轮折叠保配对；压缩率与信息保留率双指标。
 - **记忆**：SHA256 一致即跳过——「重读归零」的底层保证。
-- **安全**：九检查点纵深链；一切拦截变文本回灌，安全链同时是教学链。
+- **安全**：七检查点纵深链；一切拦截变文本回灌，安全链同时是教学链。
 - **防死循环**：去重管重复、Guard 管模式，缓存命中也计指纹。
 - **验收**：双门 = LLM 判定 ∧ 清单全满足；评测端再加客观检查器（运行产物而非自述）。
 - **重试**：失败压缩成教训注入重试上下文——「学费清单」。
@@ -4779,7 +4781,7 @@ async def gen(q):
 | `tools/memory_tool.py` | 30 | memory_query（查三层记忆） |
 | `tools/control_tools.py` | 53 | submit_result/request_block（占位 stub，分发前拦截） |
 | `tools/mcp_client.py` | 198 | stdio JSON-RPC 客户端 + MCPProxyTool 零转换注册 |
-| `safety/guard.py` | 239 | 九检查点链 + validate_params + 四种审批 Provider |
+| `safety/guard.py` | 239 | 七检查点链 + validate_params + 四种审批 Provider |
 | `safety/policy.py` | 65 | Role/Action/ActionPolicy 动作白名单 |
 | `safety/repeat_guard.py` | 118 | 三重死循环检测（连续/窗口/周期） |
 | `safety/redact.py` | 36 | 6 类敏感信息正则脱敏 |

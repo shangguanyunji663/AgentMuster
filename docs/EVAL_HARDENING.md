@@ -3,6 +3,12 @@
 > 状态：已实施（P0 + P1 + 轻量历史；2026-08-19 验证）
 > 范围：Layer-1 regression / Layer-2 context / Layer-3 memory / Layer-4 resume / Layer-5 retrieval / 安全边界
 > 目标：把"自证闭环式"的 100% 评测，改造为有统计意义、有区分度、含负例与对抗样本的可信评测。
+>
+> **当前基线（2026-10 复核）**：本方案已全部落地。第 1–2 章的"现状/根因"描述的是**改造前**的旧口径
+> （tasks 12 条、retrieval 6 query、safety 个位数），仅作诊断留档，不代表当前代码状态；改造后的实际数据为——
+> 手写 benchmark 任务 26 个 + 固定 seed 冻结基准 42 个、检索查询 82 条（exact 23 / synonym 29 / distractor 11 / empty 19）、
+> 每层补充负例与边界用例、安全 payload 15 条路径遍历 + 8 条脱敏绕过。第 3 章及以后为已实施的目标态；
+> 各层当前实测数字见 `docs/TESTING.md` 与 `README.md` 的评测结果表。
 
 ---
 
